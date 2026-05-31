@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dumpling-workbench-v3';
+const CACHE_NAME = 'dumpling-workbench-v4';
 const PRECACHE_ASSETS = [
   './',
   './index.html',

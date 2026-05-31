@@ -840,6 +840,20 @@
             }
         }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvBrh4isViafoGxHwiTHr8stUxBb_yTdo",
+            authDomain: "dumpling-creator-workbench.firebaseapp.com",
+            projectId: "dumpling-creator-workbench",
+            storageBucket: "dumpling-creator-workbench.firebasestorage.app",
+            messagingSenderId: "56411731688",
+            appId: "1:56411731688:web:96492225243b7f4429fb5d",
+            measurementId: "G-32M4K4YPBJ"
+        };
+    </script>
 </head>
 <body>
     <div class="container">
@@ -1533,6 +1547,409 @@
             return Number(monetization || 0) + Number(brandFit || 0) - Number(difficulty || 0);
         }
 
+        const FIREBASE_COLLECTION_NAME = 'creator_workbench_sync';
+        const FIREBASE_DOCUMENT_ID = 'main';
+        const FIREBASE_STATE_VERSION = 1;
+        const FIREBASE_PENDING_CLEAR_FLAG = 'dumpling_brand_firebase_pending_clear';
+
+        let firebaseAppInstance = null;
+        let firebaseAuthInstance = null;
+        let firebaseDbInstance = null;
+        let firebaseDocRef = null;
+        let firebaseUnsubscribe = null;
+        let firebaseReady = false;
+        let firebaseBootstrapped = false;
+        let firebaseApplyingRemoteState = false;
+        let firebasePendingSync = false;
+        let firebasePendingClear = false;
+        let firebasePendingSyncTimer = null;
+        let firebaseLastAppliedStateKey = '';
+        let firebasePendingWriteKey = '';
+        let firebaseBootstrapPromise = Promise.resolve();
+
+        function createEmptyWorkspaceState() {
+            const weekData = {};
+            const weekTables = {};
+            const weekTodos = {};
+
+            for (let week = 1; week <= 4; week += 1) {
+                weekData[week] = {};
+                weekTables[week] = [];
+                weekTodos[week] = [];
+            }
+
+            return {
+                weekData,
+                weekTables,
+                weekTodos,
+                monthData: {},
+                inspiration: []
+            };
+        }
+
+        function normalizeCloudWorkspaceState(raw) {
+            const state = createEmptyWorkspaceState();
+            const rawState = raw && typeof raw === 'object' ? raw : {};
+            const mode = rawState?.meta?.mode === 'cleared' ? 'cleared' : 'data';
+
+            for (let week = 1; week <= 4; week += 1) {
+                const savedWeekData = rawState.weekData && rawState.weekData[week];
+                state.weekData[week] = savedWeekData && typeof savedWeekData === 'object' && !Array.isArray(savedWeekData) ? savedWeekData : {};
+                state.weekTables[week] = Array.isArray(rawState.weekTables && rawState.weekTables[week])
+                    ? rawState.weekTables[week].map(normalizeScheduleRow)
+                    : [];
+                state.weekTodos[week] = Array.isArray(rawState.weekTodos && rawState.weekTodos[week])
+                    ? rawState.weekTodos[week].map(normalizeTodoRow)
+                    : [];
+            }
+
+            state.monthData = rawState.monthData && typeof rawState.monthData === 'object' && !Array.isArray(rawState.monthData)
+                ? rawState.monthData
+                : {};
+            state.inspiration = Array.isArray(rawState.inspiration)
+                ? rawState.inspiration.map(normalizeInspirationRow)
+                : [];
+
+            return { state, mode };
+        }
+
+        function serializeWorkspaceState(state) {
+            return JSON.stringify(state);
+        }
+
+        function setPendingCloudClearFlag() {
+            try {
+                sessionStorage.setItem(FIREBASE_PENDING_CLEAR_FLAG, '1');
+            } catch (error) {
+                console.error('sessionStorage write failed', error);
+            }
+        }
+
+        function consumePendingCloudClearFlag() {
+            try {
+                const pending = sessionStorage.getItem(FIREBASE_PENDING_CLEAR_FLAG);
+                if (pending) {
+                    sessionStorage.removeItem(FIREBASE_PENDING_CLEAR_FLAG);
+                    return true;
+                }
+            } catch (error) {
+                console.error('sessionStorage read failed', error);
+            }
+            return false;
+        }
+
+        function getStoredWeekTodoRows(week) {
+            const savedData = safeParseJson(safeGetStorageItem(getWeekTodoStorageKey(week)), []);
+            return Array.isArray(savedData) ? savedData.map(normalizeTodoRow) : [];
+        }
+
+        function getStoredInspirationRows() {
+            const savedData = safeParseJson(safeGetStorageItem(getInspirationStorageKey()), []);
+            return Array.isArray(savedData) ? savedData.map(normalizeInspirationRow) : [];
+        }
+
+        function collectLocalWorkspaceState() {
+            const state = createEmptyWorkspaceState();
+
+            for (let week = 1; week <= 4; week += 1) {
+                const savedWeekData = getStoredWeekData(week);
+                state.weekData[week] = savedWeekData && typeof savedWeekData === 'object' && !Array.isArray(savedWeekData) ? savedWeekData : {};
+                state.weekTables[week] = getStoredWeekTable(week);
+                state.weekTodos[week] = getStoredWeekTodoRows(week);
+            }
+
+            const savedMonthData = safeParseJson(safeGetStorageItem(getMonthStorageKey()), {});
+            state.monthData = savedMonthData && typeof savedMonthData === 'object' && !Array.isArray(savedMonthData) ? savedMonthData : {};
+            state.inspiration = getStoredInspirationRows();
+
+            return state;
+        }
+
+        function workspaceHasContent(state) {
+            if (!state) {
+                return false;
+            }
+
+            const hasMeaningfulTodo = rows => Array.isArray(rows) && rows.some(row => {
+                if (!Array.isArray(row)) {
+                    return false;
+                }
+
+                return Boolean(row[0]) || String(row[1] || '').trim().length > 0;
+            });
+
+            const hasMeaningfulTableRow = rows => Array.isArray(rows) && rows.some(row => {
+                if (!Array.isArray(row)) {
+                    return false;
+                }
+
+                return row.some(cell => String(cell || '').trim().length > 0);
+            });
+
+            return [1, 2, 3, 4].some(week => {
+                const weekData = state.weekData && state.weekData[week];
+                const weekTables = state.weekTables && state.weekTables[week];
+                const weekTodos = state.weekTodos && state.weekTodos[week];
+                return Boolean(
+                    (weekData && Object.keys(weekData).length) ||
+                    hasMeaningfulTableRow(weekTables) ||
+                    hasMeaningfulTodo(weekTodos)
+                );
+            }) || Boolean(
+                state.monthData && Object.keys(state.monthData).length
+            ) || Boolean(
+                Array.isArray(state.inspiration) && state.inspiration.length
+            );
+        }
+
+        function buildFirestoreWorkspacePayload(state, mode = 'data') {
+            return {
+                meta: {
+                    version: FIREBASE_STATE_VERSION,
+                    mode
+                },
+                weekData: state.weekData,
+                weekTables: state.weekTables,
+                weekTodos: state.weekTodos,
+                monthData: state.monthData,
+                inspiration: state.inspiration,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+        }
+
+        function writeWorkspaceStateToLocalStorage(state) {
+            for (let week = 1; week <= 4; week += 1) {
+                safeSetStorageItem(getWeekStorageKey(week), JSON.stringify(state.weekData[week] || {}));
+                safeSetStorageItem(getWeekTableStorageKey(week), JSON.stringify(state.weekTables[week] || []));
+                safeSetStorageItem(getWeekTodoStorageKey(week), JSON.stringify(state.weekTodos[week] || []));
+            }
+
+            safeSetStorageItem(getMonthStorageKey(), JSON.stringify(state.monthData || {}));
+            safeSetStorageItem(getInspirationStorageKey(), JSON.stringify(state.inspiration || []));
+        }
+
+        function refreshWorkspaceViewsFromLocalStorage() {
+            if (currentView === 'week') {
+                clearWeekUI();
+                loadWeekData(currentWeek);
+            } else {
+                clearMonthUI();
+                loadMonthData();
+            }
+
+            loadInspirationData();
+        }
+
+        function applyWorkspaceStateToUi(state) {
+            firebaseApplyingRemoteState = true;
+            try {
+                writeWorkspaceStateToLocalStorage(state);
+                refreshWorkspaceViewsFromLocalStorage();
+                firebaseLastAppliedStateKey = serializeWorkspaceState(state);
+            } finally {
+                firebaseApplyingRemoteState = false;
+            }
+        }
+
+        function scheduleWorkspaceCloudSync() {
+            firebasePendingSync = true;
+
+            if (!firebaseReady || firebaseApplyingRemoteState || !firebaseDocRef) {
+                return;
+            }
+
+            clearTimeout(firebasePendingSyncTimer);
+            firebasePendingSyncTimer = setTimeout(() => {
+                void flushWorkspaceCloudSync();
+            }, 700);
+        }
+
+        async function flushWorkspaceCloudSync() {
+            if (!firebaseReady || firebaseApplyingRemoteState || !firebaseDocRef || firebasePendingClear) {
+                return;
+            }
+
+            const localState = collectLocalWorkspaceState();
+            const stateKey = serializeWorkspaceState(localState);
+            if (!workspaceHasContent(localState) || stateKey === firebaseLastAppliedStateKey || stateKey === firebasePendingWriteKey) {
+                firebasePendingSync = false;
+                return;
+            }
+
+            firebasePendingWriteKey = stateKey;
+
+            try {
+                await firebaseDocRef.set(buildFirestoreWorkspacePayload(localState, 'data'));
+                firebaseLastAppliedStateKey = stateKey;
+            } catch (error) {
+                console.error('Firestore sync failed', error);
+            } finally {
+                firebasePendingWriteKey = '';
+                firebasePendingSync = false;
+            }
+        }
+
+        async function flushWorkspaceCloudClear() {
+            if (!firebaseDocRef) {
+                return;
+            }
+
+            const emptyState = createEmptyWorkspaceState();
+            const stateKey = serializeWorkspaceState(emptyState);
+            firebasePendingWriteKey = stateKey;
+            let clearedSuccessfully = false;
+
+            try {
+                await firebaseDocRef.set(buildFirestoreWorkspacePayload(emptyState, 'cleared'));
+                firebaseLastAppliedStateKey = stateKey;
+                clearedSuccessfully = true;
+            } catch (error) {
+                console.error('Firestore clear failed', error);
+            } finally {
+                firebasePendingWriteKey = '';
+                firebasePendingSync = false;
+                firebasePendingClear = false;
+                if (clearedSuccessfully) {
+                    clearPendingCloudClearFlag();
+                }
+            }
+        }
+
+        async function handleFirestoreSnapshot(snapshot) {
+            try {
+                if (firebasePendingClear) {
+                    await flushWorkspaceCloudClear();
+                    return;
+                }
+
+                if (!snapshot.exists) {
+                    if (!firebaseBootstrapped) {
+                        const localState = collectLocalWorkspaceState();
+                        if (workspaceHasContent(localState)) {
+                            const stateKey = serializeWorkspaceState(localState);
+                            firebasePendingWriteKey = stateKey;
+                            await firebaseDocRef.set(buildFirestoreWorkspacePayload(localState, 'data'));
+                            firebaseLastAppliedStateKey = stateKey;
+                            firebasePendingWriteKey = '';
+                        }
+                    }
+
+                    firebaseBootstrapped = true;
+                    firebaseReady = true;
+                    if (firebasePendingSync) {
+                        await flushWorkspaceCloudSync();
+                    }
+                    return;
+                }
+
+                const { state: cloudState, mode } = normalizeCloudWorkspaceState(snapshot.data());
+                const cloudStateKey = serializeWorkspaceState(cloudState);
+                const cloudHasContent = workspaceHasContent(cloudState);
+
+                if (mode === 'cleared') {
+                    firebaseBootstrapped = true;
+                    firebaseReady = true;
+                    if (cloudStateKey !== firebaseLastAppliedStateKey) {
+                        applyWorkspaceStateToUi(cloudState);
+                    }
+                    if (firebasePendingSync) {
+                        await flushWorkspaceCloudSync();
+                    }
+                    return;
+                }
+
+                if (!firebaseBootstrapped && !cloudHasContent) {
+                    const localState = collectLocalWorkspaceState();
+                    if (workspaceHasContent(localState)) {
+                        const stateKey = serializeWorkspaceState(localState);
+                        firebasePendingWriteKey = stateKey;
+                        await firebaseDocRef.set(buildFirestoreWorkspacePayload(localState, 'data'));
+                        firebaseLastAppliedStateKey = stateKey;
+                        firebasePendingWriteKey = '';
+                        firebaseBootstrapped = true;
+                        firebaseReady = true;
+                        if (firebasePendingSync) {
+                            await flushWorkspaceCloudSync();
+                        }
+                        return;
+                    }
+                }
+
+                firebaseBootstrapped = true;
+                firebaseReady = true;
+
+                if (cloudStateKey === firebaseLastAppliedStateKey || cloudStateKey === firebasePendingWriteKey) {
+                    firebasePendingWriteKey = '';
+                    if (firebasePendingSync) {
+                        await flushWorkspaceCloudSync();
+                    }
+                    return;
+                }
+
+                applyWorkspaceStateToUi(cloudState);
+
+                if (firebasePendingSync) {
+                    await flushWorkspaceCloudSync();
+                }
+            } catch (error) {
+                console.error('Firestore snapshot handling failed', error);
+                firebaseBootstrapped = true;
+                firebaseReady = true;
+                if (firebasePendingSync) {
+                    await flushWorkspaceCloudSync();
+                }
+            }
+        }
+
+        async function initFirebaseWorkspaceSync() {
+            if (typeof firebase === 'undefined' || !firebaseConfig || !firebaseConfig.apiKey) {
+                return;
+            }
+
+            try {
+                firebasePendingClear = consumePendingCloudClearFlag() || firebasePendingClear;
+                firebaseAppInstance = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
+                firebaseAuthInstance = firebase.auth();
+                firebaseDbInstance = firebase.firestore();
+
+                await firebaseAuthInstance.signInAnonymously();
+
+                firebaseDocRef = firebaseDbInstance.collection(FIREBASE_COLLECTION_NAME).doc(FIREBASE_DOCUMENT_ID);
+
+                if (firebaseUnsubscribe) {
+                    firebaseUnsubscribe();
+                }
+
+                firebaseUnsubscribe = firebaseDocRef.onSnapshot(snapshot => {
+                    void handleFirestoreSnapshot(snapshot);
+                }, error => {
+                    console.error('Firestore listener failed', error);
+                    firebaseReady = true;
+                });
+            } catch (error) {
+                console.error('Firebase initialization failed', error);
+            }
+        }
+
+        async function clearRemoteWorkspaceData() {
+            firebasePendingClear = true;
+            setPendingCloudClearFlag();
+
+            if (!firebaseDocRef) {
+                return;
+            }
+
+            try {
+                await firebaseBootstrapPromise;
+            } catch (error) {
+                console.error('Firebase bootstrap wait failed', error);
+            }
+
+            if (firebaseReady) {
+                await flushWorkspaceCloudClear();
+            }
+        }
+
         function setActiveButton(view, week = null) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 const isMonth = view === 'month' && btn.dataset.view === 'month';
@@ -1623,6 +2040,7 @@
 
             safeSetStorageItem(getWeekStorageKey(currentWeek), JSON.stringify(data));
             saveWeekTableData();
+            scheduleWorkspaceCloudSync();
         }
 
         function loadWeekData(week) {
@@ -1668,6 +2086,7 @@
             });
             safeSetStorageItem(getWeekTableStorageKey(currentWeek), JSON.stringify(rows));
             updateMonthSummary();
+            scheduleWorkspaceCloudSync();
         }
 
         function addNewRow(data = ['', '', '', 'IG 主帳', '曝光', '未完成']) {
@@ -1768,6 +2187,7 @@
                 ]);
             });
             safeSetStorageItem(getWeekTodoStorageKey(currentWeek), JSON.stringify(rows));
+            scheduleWorkspaceCloudSync();
         }
 
         function loadWeekTodoData(week) {
@@ -1850,6 +2270,7 @@
 
             safeSetStorageItem(getMonthStorageKey(), JSON.stringify(data));
             updateRevenueGoalProgress();
+            scheduleWorkspaceCloudSync();
         }
 
         function loadMonthData() {
@@ -1959,6 +2380,7 @@
                 ]);
             });
             safeSetStorageItem(getInspirationStorageKey(), JSON.stringify(rows));
+            scheduleWorkspaceCloudSync();
         }
 
         function loadInspirationData() {
@@ -2181,7 +2603,7 @@
             document.addEventListener('change', handleWorkspaceChange);
         }
 
-        function resetAllData() {
+        async function resetAllData() {
             if (!confirm('確定要清除所有週資料、月總覽與靈感池嗎？此動作無法復原。')) {
                 return;
             }
@@ -2205,6 +2627,7 @@
             }
 
             removableKeys.forEach(key => safeRemoveStorageItem(key));
+            await clearRemoteWorkspaceData();
             location.reload();
         }
 
@@ -2214,6 +2637,7 @@
                 loadInspirationData();
                 loadMonthData();
                 selectWeek(1);
+                firebaseBootstrapPromise = initFirebaseWorkspaceSync();
             } catch (error) {
                 console.error('Initialization failed', error);
                 try {
