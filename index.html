@@ -1591,23 +1591,27 @@
             const state = createEmptyWorkspaceState();
             const rawState = raw && typeof raw === 'object' ? raw : {};
             const mode = rawState?.meta?.mode === 'cleared' ? 'cleared' : 'data';
+            const sourceState = typeof rawState.stateJson === 'string'
+                ? safeParseJson(rawState.stateJson, {})
+                : rawState;
+            const normalizedSource = sourceState && typeof sourceState === 'object' ? sourceState : {};
 
             for (let week = 1; week <= 4; week += 1) {
-                const savedWeekData = rawState.weekData && rawState.weekData[week];
+                const savedWeekData = normalizedSource.weekData && normalizedSource.weekData[week];
                 state.weekData[week] = savedWeekData && typeof savedWeekData === 'object' && !Array.isArray(savedWeekData) ? savedWeekData : {};
-                state.weekTables[week] = Array.isArray(rawState.weekTables && rawState.weekTables[week])
-                    ? rawState.weekTables[week].map(normalizeScheduleRow)
+                state.weekTables[week] = Array.isArray(normalizedSource.weekTables && normalizedSource.weekTables[week])
+                    ? normalizedSource.weekTables[week].map(normalizeScheduleRow)
                     : [];
-                state.weekTodos[week] = Array.isArray(rawState.weekTodos && rawState.weekTodos[week])
-                    ? rawState.weekTodos[week].map(normalizeTodoRow)
+                state.weekTodos[week] = Array.isArray(normalizedSource.weekTodos && normalizedSource.weekTodos[week])
+                    ? normalizedSource.weekTodos[week].map(normalizeTodoRow)
                     : [];
             }
 
-            state.monthData = rawState.monthData && typeof rawState.monthData === 'object' && !Array.isArray(rawState.monthData)
-                ? rawState.monthData
+            state.monthData = normalizedSource.monthData && typeof normalizedSource.monthData === 'object' && !Array.isArray(normalizedSource.monthData)
+                ? normalizedSource.monthData
                 : {};
-            state.inspiration = Array.isArray(rawState.inspiration)
-                ? rawState.inspiration.map(normalizeInspirationRow)
+            state.inspiration = Array.isArray(normalizedSource.inspiration)
+                ? normalizedSource.inspiration.map(normalizeInspirationRow)
                 : [];
 
             return { state, mode };
@@ -1708,11 +1712,7 @@
                     version: FIREBASE_STATE_VERSION,
                     mode
                 },
-                weekData: state.weekData,
-                weekTables: state.weekTables,
-                weekTodos: state.weekTodos,
-                monthData: state.monthData,
-                inspiration: state.inspiration,
+                stateJson: serializeWorkspaceState(state),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
         }
