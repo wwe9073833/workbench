@@ -1,0 +1,2019 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>創作經營工作台</title>
+    <meta name="theme-color" content="#120715">
+    <meta name="application-name" content="創作經營工作台">
+    <meta name="apple-mobile-web-app-title" content="創作經營工作台">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-1: #120715;
+            --bg-2: #1f0d22;
+            --panel: rgba(255, 255, 255, 0.05);
+            --line: rgba(255, 79, 154, 0.24);
+            --line-strong: rgba(255, 123, 182, 0.42);
+            --text: #f7e2ec;
+            --muted: #b995aa;
+            --accent: #ff4f9a;
+            --accent-2: #ff7bb6;
+            --accent-soft: rgba(255, 79, 154, 0.14);
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+        }
+
+        body {
+            font-family: "Helvetica Neue", "Noto Sans TC", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(255, 79, 154, 0.18), transparent 30%),
+                radial-gradient(circle at top right, rgba(255, 123, 182, 0.12), transparent 24%),
+                linear-gradient(145deg, var(--bg-1) 0%, var(--bg-2) 52%, #160611 100%);
+            min-height: 100vh;
+            padding: 18px;
+        }
+
+        .container {
+            max-width: 1380px;
+            margin: 0 auto;
+        }
+
+        .header {
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 22px;
+            padding: 28px 24px;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+            box-shadow: var(--shadow);
+        }
+
+        .header::after {
+            content: "";
+            position: absolute;
+            right: -40px;
+            top: -20px;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 79, 154, 0.26), transparent 65%);
+            pointer-events: none;
+        }
+
+        .eyebrow {
+            color: var(--accent-2);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-size: 34px;
+            line-height: 1.15;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--muted);
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+
+        .view-switcher {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .switch-divider {
+            width: 1px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.12);
+            margin: 0 2px;
+        }
+
+        .tab-btn,
+        .btn,
+        input,
+        textarea,
+        select {
+            font-family: inherit;
+        }
+
+        .tab-btn,
+        .btn {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            border-radius: 999px;
+            padding: 10px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.25s ease;
+        }
+
+        .tab-btn:hover,
+        .btn:hover {
+            transform: translateY(-1px);
+            border-color: var(--line-strong);
+        }
+
+        .tab-btn.active,
+        .btn {
+            background: linear-gradient(135deg, var(--accent), #d81b60);
+            border-color: transparent;
+            box-shadow: 0 10px 24px rgba(255, 79, 154, 0.25);
+        }
+
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 123, 182, 0.3);
+            box-shadow: none;
+        }
+
+        .view-panel {
+            display: none;
+        }
+
+        .view-panel.active {
+            display: block;
+        }
+
+        .section-intro {
+            margin-bottom: 18px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .goal-strip,
+        .priority-board,
+        .todo-board,
+        .hero-grid,
+        .dashboard,
+        .review-grid,
+        .review-compact,
+        .month-grid {
+            display: grid;
+            gap: 18px;
+        }
+
+        .goal-strip,
+        .priority-board,
+        .todo-board {
+            margin-bottom: 18px;
+        }
+
+        .goal-grid {
+            display: grid;
+            grid-template-columns: 1.15fr repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .hero-grid {
+            grid-template-columns: 1.18fr 0.82fr;
+            margin-bottom: 18px;
+        }
+
+        .dashboard,
+        .month-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .review-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .review-compact {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .card,
+        .section-shell {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            padding: 22px;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow);
+        }
+
+        .card-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--accent-2);
+            font-size: 15px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .card-subtitle {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .metric-tile,
+        .month-item,
+        .review-item,
+        .lifecycle-shell,
+        .goal-item,
+        .priority-summary {
+            padding: 16px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .goal-main {
+            background: linear-gradient(135deg, rgba(255, 79, 154, 0.18), rgba(255, 255, 255, 0.05));
+            border-color: rgba(255, 123, 182, 0.28);
+        }
+
+        .metric-label,
+        .review-label,
+        .goal-label {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 10px;
+            line-height: 1.5;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .metric-input,
+        .stat-input,
+        .table-input,
+        .table-select,
+        .review-input,
+        .review-textarea,
+        .month-input,
+        .month-textarea,
+        .lifecycle-select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 15px;
+        }
+
+        .stat-input {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .review-textarea,
+        .month-textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .review-textarea.compact {
+            min-height: 84px;
+        }
+
+        .table-input[readonly] {
+            color: #ffd4e5;
+            font-weight: 700;
+            background: rgba(255, 79, 154, 0.1);
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(255, 79, 154, 0.16);
+        }
+
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .summary-box {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .summary-box.total,
+        .priority-summary {
+            background: linear-gradient(135deg, rgba(255, 79, 154, 0.22), rgba(255, 123, 182, 0.12));
+            border-color: rgba(255, 123, 182, 0.35);
+        }
+
+        .summary-value,
+        .goal-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            margin-top: 10px;
+        }
+
+        .goal-value.small {
+            font-size: 24px;
+        }
+
+        .goal-hint {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .checklist {
+            display: grid;
+            gap: 10px;
+        }
+
+        .todo-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .todo-row {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .todo-row.done {
+            opacity: 0.65;
+        }
+
+        .todo-check {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .todo-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 15px;
+        }
+
+        .todo-input:focus {
+            box-shadow: none;
+        }
+
+        .todo-row.done .todo-input {
+            text-decoration: line-through;
+            color: #9c7f91;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: 0.2s ease;
+            color: var(--text);
+        }
+
+        .checklist-item:hover {
+            border-color: rgba(255, 79, 154, 0.25);
+            background: rgba(255, 79, 154, 0.08);
+        }
+
+        .checklist-item.checked {
+            color: #8d7484;
+            text-decoration: line-through;
+        }
+
+        .checklist-item input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .lifecycle-shell {
+            display: grid;
+            gap: 14px;
+        }
+
+        .lifecycle-bar {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .lifecycle-fill {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            transition: width 0.25s ease;
+        }
+
+        .stage-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .stage-pill {
+            padding: 8px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .stage-pill.active {
+            color: #fff;
+            background: rgba(255, 79, 154, 0.18);
+            border-color: rgba(255, 123, 182, 0.36);
+        }
+
+        .stage-pill.completed {
+            color: #f4bed3;
+            border-color: rgba(255, 123, 182, 0.24);
+        }
+
+        .table-section {
+            margin-top: 30px;
+        }
+
+        .table-title {
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .table-subtitle {
+            margin-bottom: 16px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 980px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        th,
+        td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: top;
+        }
+
+        th {
+            font-size: 12px;
+            color: var(--accent-2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(255, 79, 154, 0.1);
+        }
+
+        tr:hover {
+            background: rgba(255, 79, 154, 0.04);
+        }
+
+        .row-index {
+            color: var(--accent-2);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .mobile-field {
+            display: none;
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 6px;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+
+        .score-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 48px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255, 79, 154, 0.16);
+            border: 1px solid rgba(255, 123, 182, 0.25);
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .score-stack {
+            display: grid;
+            gap: 8px;
+        }
+
+        .score-inline {
+            display: grid;
+            grid-template-columns: 52px 1fr;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .score-inline span {
+            color: var(--muted);
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .note-section {
+            margin-top: 24px;
+            border-radius: 18px;
+            padding: 18px;
+            background: linear-gradient(135deg, rgba(255, 79, 154, 0.09), rgba(255, 255, 255, 0.03));
+            border: 1px solid var(--line);
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .note-section strong {
+            color: var(--accent-2);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        @media (max-width: 1120px) {
+            .goal-grid,
+            .hero-grid,
+            .dashboard,
+            .review-grid,
+            .review-compact,
+            .month-grid,
+            .metrics-grid,
+            .summary-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+                overflow-x: hidden;
+            }
+
+            .header {
+                padding: 22px 18px;
+                border-radius: 20px;
+            }
+
+            .header h1 {
+                font-size: 26px;
+            }
+
+            .topbar {
+                align-items: stretch;
+            }
+
+            .view-switcher {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                width: 100%;
+            }
+
+            .switch-divider {
+                display: none;
+            }
+
+            .tab-btn,
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            input,
+            textarea,
+            select,
+            .metric-input,
+            .stat-input,
+            .table-input,
+            .table-select,
+            .review-input,
+            .review-textarea,
+            .month-input,
+            .month-textarea,
+            .lifecycle-select {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .card,
+            .section-shell {
+                padding: 16px;
+                border-radius: 18px;
+            }
+
+            .table-section {
+                margin-top: 18px;
+            }
+
+            .table-wrap {
+                overflow: visible;
+                border: 0;
+            }
+
+            table {
+                min-width: 0;
+                display: block;
+                background: transparent;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tbody {
+                display: block;
+            }
+
+            tr {
+                display: block;
+                margin-bottom: 12px;
+                padding: 14px;
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+            }
+
+            th,
+            td {
+                display: block;
+                width: 100%;
+                padding: 0;
+                border: 0;
+                background: transparent;
+            }
+
+            td .mobile-field {
+                display: block;
+            }
+
+            td + td {
+                margin-top: 10px;
+            }
+
+            .row-index {
+                display: inline-flex;
+                margin-bottom: 8px;
+                font-size: 13px;
+                opacity: 0.9;
+            }
+
+            .table-input,
+            .table-select,
+            .todo-input,
+            .metric-input,
+            .stat-input,
+            .month-input,
+            .month-textarea,
+            .review-textarea {
+                min-height: 44px;
+            }
+
+            .todo-row {
+                grid-template-columns: 24px 1fr;
+                grid-template-areas:
+                    "check input"
+                    "button button";
+                align-items: start;
+                gap: 10px;
+                padding: 12px;
+            }
+
+            .todo-check {
+                grid-area: check;
+                margin-top: 10px;
+            }
+
+            .todo-input {
+                grid-area: input;
+            }
+
+            .todo-row .btn {
+                grid-area: button;
+                width: 100%;
+            }
+
+            .score-stack {
+                gap: 10px;
+            }
+
+            .score-inline {
+                grid-template-columns: 42px 1fr;
+            }
+
+            .goal-grid,
+            .review-grid,
+            .review-compact,
+            .month-grid,
+            .metrics-grid,
+            .summary-row,
+            .hero-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .month-grid,
+            .review-grid,
+            .review-compact,
+            .metrics-grid,
+            .summary-row,
+            .hero-grid {
+                gap: 12px;
+            }
+
+            .month-item,
+            .summary-box,
+            .metric-tile,
+            .review-item {
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .summary-value,
+            .goal-value {
+                font-size: 22px;
+                overflow-wrap: anywhere;
+                word-break: break-word;
+                line-height: 1.2;
+            }
+
+            .month-item .summary-value,
+            .summary-box .summary-value {
+                max-width: 100%;
+            }
+
+            .goal-value.small {
+                font-size: 20px;
+            }
+
+            .lifecycle-fill {
+                max-width: 100%;
+            }
+
+            .stage-list {
+                gap: 6px;
+            }
+
+            .stage-pill {
+                font-size: 11px;
+                padding: 7px 9px;
+            }
+
+            .note-section {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="eyebrow">CREATOR WORKBENCH FOR SOLO ARTISTS</div>
+            <h1>✨ 創作經營工作台</h1>
+            <p>創作 × 發佈 × 商品 × 變現</p>
+        </div>
+
+        <div class="topbar">
+            <div class="view-switcher">
+                <button class="tab-btn active" data-view="week" data-week="1" type="button">第 1 週</button>
+                <button class="tab-btn" data-view="week" data-week="2" type="button">第 2 週</button>
+                <button class="tab-btn" data-view="week" data-week="3" type="button">第 3 週</button>
+                <button class="tab-btn" data-view="week" data-week="4" type="button">第 4 週</button>
+                <span class="switch-divider"></span>
+                <button class="tab-btn" data-view="month" type="button">月總覽</button>
+            </div>
+            <button class="btn secondary" id="resetAllButton" data-action="reset-all" type="button">清除所有資料</button>
+        </div>
+
+        <section id="weekView" class="view-panel active">
+            <div class="section-intro">先看本週最重要的事，再把一般待辦排清楚。這個工作台的目的不是管理系統，而是幫你一打開就知道今天先做什麼。</div>
+
+            <div class="priority-board">
+                <div class="card">
+                    <div class="card-title">
+                        <span>本週最重要三件事</span>
+                        <span class="card-subtitle">固定只留 3 件，幫你先做真正重要的事</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>任務名稱</th>
+                                    <th>類型</th>
+                                    <th>為什麼重要</th>
+                                    <th>狀態</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="row-index">1</td>
+                                    <td><span class="mobile-field">任務名稱</span><input class="table-input week-field" type="text" id="topTask1Name" placeholder="例：完成商品頁與購買說明"></td>
+                                    <td>
+                                        <span class="mobile-field">類型</span>
+                                        <select class="table-select week-field" id="topTask1Type">
+                                            <option>創作</option>
+                                            <option>商品</option>
+                                            <option>內容</option>
+                                            <option>官網</option>
+                                            <option>委託</option>
+                                            <option>生活</option>
+                                        </select>
+                                    </td>
+                                    <td><span class="mobile-field">為什麼重要</span><input class="table-input week-field" type="text" id="topTask1Why" placeholder="例：這會影響本週導流與下單"></td>
+                                    <td>
+                                        <span class="mobile-field">狀態</span>
+                                        <select class="table-select week-field" id="topTask1Status">
+                                            <option>未開始</option>
+                                            <option>進行中</option>
+                                            <option>完成</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="row-index">2</td>
+                                    <td><span class="mobile-field">任務名稱</span><input class="table-input week-field" type="text" id="topTask2Name" placeholder="例：發一篇導購內容帶到官網"></td>
+                                    <td>
+                                        <span class="mobile-field">類型</span>
+                                        <select class="table-select week-field" id="topTask2Type">
+                                            <option>創作</option>
+                                            <option>商品</option>
+                                            <option>內容</option>
+                                            <option>官網</option>
+                                            <option>委託</option>
+                                            <option>生活</option>
+                                        </select>
+                                    </td>
+                                    <td><span class="mobile-field">為什麼重要</span><input class="table-input week-field" type="text" id="topTask2Why" placeholder="例：這件事做完才有後續推進空間"></td>
+                                    <td>
+                                        <span class="mobile-field">狀態</span>
+                                        <select class="table-select week-field" id="topTask2Status">
+                                            <option>未開始</option>
+                                            <option>進行中</option>
+                                            <option>完成</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="row-index">3</td>
+                                    <td><span class="mobile-field">任務名稱</span><input class="table-input week-field" type="text" id="topTask3Name" placeholder="例：開放本月委託招募表單"></td>
+                                    <td>
+                                        <span class="mobile-field">類型</span>
+                                        <select class="table-select week-field" id="topTask3Type">
+                                            <option>創作</option>
+                                            <option>商品</option>
+                                            <option>內容</option>
+                                            <option>官網</option>
+                                            <option>委託</option>
+                                            <option>生活</option>
+                                        </select>
+                                    </td>
+                                    <td><span class="mobile-field">為什麼重要</span><input class="table-input week-field" type="text" id="topTask3Why" placeholder="例：拖太久會讓本週節奏整個亂掉"></td>
+                                    <td>
+                                        <span class="mobile-field">狀態</span>
+                                        <select class="table-select week-field" id="topTask3Status">
+                                            <option>未開始</option>
+                                            <option>進行中</option>
+                                            <option>完成</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="todo-board">
+                <div class="card">
+                    <div class="card-title">
+                        <span>本週待辦事項</span>
+                        <span class="card-subtitle">想到就記，做完就勾，不用先整理成系統</span>
+                    </div>
+                    <div class="todo-list" id="todoList"></div>
+                    <button class="btn" style="margin-top:16px;" id="addTodoButton" data-action="add-todo" type="button">新增待辦</button>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="section-shell">
+                    <div class="table-title">📅 本週發佈排程</div>
+                    <div class="table-subtitle">把同一份內容分開記錄到不同平台，讓你一眼看出哪個平台已發、未發或漏發。</div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>主題</th>
+                                    <th>類型</th>
+                                    <th>發佈平台</th>
+                                    <th>內容目的</th>
+                                    <th>狀態</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                    <button class="btn" style="margin-top:16px;" id="addPostButton" data-action="add-post" type="button">新增發佈項目</button>
+                </div>
+            </div>
+
+            <div class="hero-grid">
+                <div class="card">
+                    <div class="card-title">
+                        <span>主力作品進度</span>
+                        <span class="card-subtitle">追蹤目前主要作品做到哪個階段。</span>
+                    </div>
+                    <div class="lifecycle-shell">
+                        <div>
+                            <label class="metric-label" for="weeklyFocusWork">本週主力作品</label>
+                            <input class="metric-input week-field" type="text" id="weeklyFocusWork" placeholder="例：新角色插畫、開箱短影片、貼圖系列">
+                        </div>
+                        <div>
+                            <label class="metric-label" for="weeklyLifecycleStage">目前階段</label>
+                            <select class="lifecycle-select week-field" id="weeklyLifecycleStage">
+                                <option value="0">靈感</option>
+                                <option value="1">草稿</option>
+                                <option value="2">完稿</option>
+                                <option value="3">發佈</option>
+                                <option value="4">商品化</option>
+                                <option value="5">二次內容</option>
+                                <option value="6">產生收入</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="metric-label" for="weeklyWorks">本週作品數</label>
+                            <input class="metric-input week-field" type="number" id="weeklyWorks" min="0" value="0">
+                        </div>
+                        <div>
+                            <div class="metric-label">生命週期進度</div>
+                            <div class="lifecycle-bar">
+                                <div class="lifecycle-fill" id="lifecycleFill"></div>
+                            </div>
+                            <div class="summary-value" style="font-size:18px;" id="lifecycleCurrent">靈感</div>
+                        </div>
+                        <div class="stage-list" id="stageList"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>本週變現進度</span>
+                        <span class="card-subtitle">保留現有收入追蹤</span>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-box">
+                            <label class="metric-label" for="weeklyOrders">本週訂單數</label>
+                            <input class="stat-input week-field" type="number" id="weeklyOrders" min="0" value="0">
+                        </div>
+                        <div class="summary-box">
+                            <label class="metric-label" for="weeklyProductIncome">商品收入</label>
+                            <input class="stat-input week-field week-money" type="number" id="weeklyProductIncome" min="0" value="0">
+                        </div>
+                        <div class="summary-box">
+                            <label class="metric-label" for="weeklyCommissionIncome">委託收入</label>
+                            <input class="stat-input week-field week-money" type="number" id="weeklyCommissionIncome" min="0" value="0">
+                        </div>
+                    </div>
+                    <div class="summary-row" style="margin-top:14px;">
+                        <div class="summary-box">
+                            <label class="metric-label" for="weeklySponsorIncome">業配收入</label>
+                            <input class="stat-input week-field week-money" type="number" id="weeklySponsorIncome" min="0" value="0">
+                        </div>
+                        <div class="summary-box">
+                            <label class="metric-label" for="weeklyDigitalIncome">數位商品收入</label>
+                            <input class="stat-input week-field week-money" type="number" id="weeklyDigitalIncome" min="0" value="0">
+                        </div>
+                        <div class="summary-box">
+                            <label class="metric-label" for="weeklyMembershipIncome">訂閱／會員收入</label>
+                            <input class="stat-input week-field week-money" type="number" id="weeklyMembershipIncome" min="0" value="0">
+                        </div>
+                    </div>
+                    <div class="summary-row" style="margin-top:14px;">
+                        <div class="summary-box total">
+                            <div class="metric-label">本週總變現</div>
+                            <div class="summary-value">NT$ <span id="weeklyIncomeTotal">0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="section-shell">
+                    <div class="table-title">💡 靈感池</div>
+                    <div class="table-subtitle">先記下靈感，評分欄位都有預設值，需要時再微調，不用每次新增都填很多東西。</div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>靈感標題</th>
+                                    <th>來源</th>
+                                    <th>可發展方向</th>
+                                    <th>評分</th>
+                                    <th>優先分數</th>
+                                    <th>狀態</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inspirationBody"></tbody>
+                        </table>
+                    </div>
+                    <button class="btn" style="margin-top:16px;" id="addInspirationButton" data-action="add-inspiration" type="button">新增靈感</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="monthView" class="view-panel">
+            <div class="section-intro">這裡再看本月營收目標與整體累積就好。每天執行時先回到週頁面，月底或每週再來檢查這些數字。</div>
+
+            <div class="goal-strip">
+                <div class="card">
+                    <div class="card-title">
+                        <span>本月營收目標</span>
+                        <span class="card-subtitle">用 4 週總變現回看自己是不是正在靠近目標</span>
+                    </div>
+                    <div class="goal-grid">
+                        <div class="goal-item goal-main">
+                            <label class="goal-label" for="monthlyRevenueTarget">本月營收目標</label>
+                            <input class="stat-input month-field" type="number" id="monthlyRevenueTarget" min="0" value="0">
+                            <div class="goal-hint">目前已達成金額會自動讀取 4 週的「本週總變現」加總。</div>
+                        </div>
+                        <div class="goal-item">
+                            <div class="goal-label">目前已達成金額</div>
+                            <div class="goal-value small">NT$ <span id="monthlyRevenueAchieved">0</span></div>
+                        </div>
+                        <div class="goal-item">
+                            <div class="goal-label">還差多少</div>
+                            <div class="goal-value small">NT$ <span id="monthlyRevenueGap">0</span></div>
+                        </div>
+                        <div class="goal-item">
+                            <div class="goal-label">達成率</div>
+                            <div class="goal-value small"><span id="monthlyRevenueRate">0</span>%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="month-grid">
+                <div class="card">
+                    <div class="card-title">
+                        <span>本月變現輪廓</span>
+                        <span class="pill">自動彙總</span>
+                    </div>
+                    <div class="review-grid">
+                        <div class="month-item">
+                            <div class="review-label">本月總變現</div>
+                            <div class="summary-value">NT$ <span id="monthRevenueTotal">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">本月訂單數</div>
+                            <div class="summary-value"><span id="monthOrdersTotal">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">平均客單價</div>
+                            <div class="summary-value">NT$ <span id="averageOrderValue">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">商品收入</div>
+                            <div class="summary-value">NT$ <span id="monthProductIncomeTotal">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">委託收入</div>
+                            <div class="summary-value">NT$ <span id="monthCommissionIncomeTotal">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">業配收入</div>
+                            <div class="summary-value">NT$ <span id="monthSponsorIncomeTotal">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">數位商品收入</div>
+                            <div class="summary-value">NT$ <span id="monthDigitalIncomeTotal">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">訂閱／會員收入</div>
+                            <div class="summary-value">NT$ <span id="monthMembershipIncomeTotal">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>本月創作節奏</span>
+                        <span class="pill">自動彙總</span>
+                    </div>
+                    <div class="review-grid">
+                        <div class="month-item">
+                            <div class="review-label">本月完成作品</div>
+                            <div class="summary-value"><span id="monthWorksTotal">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">本月發布內容</div>
+                            <div class="summary-value"><span id="monthPublishedContentTotal">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>本月亮點觀察</span>
+                        <span class="pill">手動紀錄</span>
+                    </div>
+                    <div class="review-grid">
+                        <div class="month-item">
+                            <label class="review-label" for="monthValueWork">本月最有價值作品</label>
+                            <input class="month-input month-field" type="text" id="monthValueWork" placeholder="例：角色系列主視覺、幕後訪談影片">
+                        </div>
+                        <div class="month-item">
+                            <label class="review-label" for="monthPotentialProduct">本月最有潛力商品</label>
+                            <input class="month-input month-field" type="text" id="monthPotentialProduct" placeholder="例：貼圖包、明信片組、電子桌布">
+                        </div>
+                        <div class="month-item" style="grid-column: 1 / -1;">
+                            <label class="review-label" for="monthRequestedContent">本月粉絲敲碗內容</label>
+                            <input class="month-input month-field" type="text" id="monthRequestedContent" placeholder="例：更多繪圖過程、角色設定故事、商品開箱">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>下月主攻方向</span>
+                        <span class="pill">手動紀錄</span>
+                    </div>
+                    <div class="review-grid">
+                        <div class="month-item" style="grid-column: 1 / -1;">
+                            <label class="review-label" for="monthGoal">下月主攻作品／商品／內容</label>
+                            <textarea class="month-textarea month-field" id="monthGoal" placeholder="例：完成一個能商品化的主題系列、固定每週一篇導購內容、強化委託招募轉換"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="note-section">
+            <strong>使用方式</strong><br>
+            先看本週最重要三件事，再把一般待辦補上，這樣每天打開就知道先做什麼。<br>
+            發佈排程、主力作品進度與本週變現進度，負責幫你維持節奏，不需要填太多難以判斷的欄位。<br>
+            靈感池和月總覽保留在後面，需要時再看，不讓它們搶走你每天執行的注意力。
+        </div>
+    </div>
+
+    <script>
+        let currentWeek = 1;
+        let currentView = 'week';
+
+        const lifecycleStages = ['靈感', '草稿', '完稿', '發佈', '商品化', '二次內容', '產生收入'];
+
+        function getWeekStorageKey(week) {
+            return `dumpling_brand_week_${week}`;
+        }
+
+        function getWeekTableStorageKey(week) {
+            return `dumpling_brand_week_table_${week}`;
+        }
+
+        function getWeekTodoStorageKey(week) {
+            return `dumpling_brand_week_todos_${week}`;
+        }
+
+        function normalizeScheduleStatus(status) {
+            if (status === '已發佈') {
+                return '已完成';
+            }
+            if (status === '已排程') {
+                return '進行中';
+            }
+            if (status === '製作中') {
+                return '進行中';
+            }
+            if (status === '待規劃') {
+                return '未完成';
+            }
+            return status || '未完成';
+        }
+
+        function normalizeSchedulePlatform(platform) {
+            if (platform === 'IG') {
+                return 'IG 主帳';
+            }
+            if (platform === 'Threads') {
+                return 'TikTok';
+            }
+            if (platform === '官網') {
+                return '官網';
+            }
+            if (platform === 'IG 主帳' || platform === 'IG 日常帳' || platform === 'TikTok') {
+                return platform;
+            }
+            return 'IG 主帳';
+        }
+
+        function normalizeScheduleRow(row) {
+            if (!Array.isArray(row)) {
+                return ['', '', '', 'IG 主帳', '曝光', '未完成'];
+            }
+
+            if (row.length >= 6) {
+                const isNewFormatPlatform = ['IG 主帳', 'IG 日常帳', 'TikTok', '官網'].includes(row[3]);
+                if (isNewFormatPlatform) {
+                    return [row[0], row[1], row[2], normalizeSchedulePlatform(row[3]), row[4], normalizeScheduleStatus(row[5])];
+                }
+                return [row[0], row[1], row[2], 'IG 主帳', row[3], normalizeScheduleStatus(row[5])];
+            }
+
+            if (row.length === 5) {
+                return [row[0], row[1], row[2], 'IG 主帳', row[3], normalizeScheduleStatus(row[4])];
+            }
+
+            return ['', '', '', 'IG 主帳', '曝光', '未完成'];
+        }
+
+        function safeGetStorageItem(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (error) {
+                console.error(`localStorage read failed for ${key}`, error);
+                return null;
+            }
+        }
+
+        function safeSetStorageItem(key, value) {
+            try {
+                localStorage.setItem(key, value);
+                return true;
+            } catch (error) {
+                console.error(`localStorage write failed for ${key}`, error);
+                return false;
+            }
+        }
+
+        function safeRemoveStorageItem(key) {
+            try {
+                localStorage.removeItem(key);
+            } catch (error) {
+                console.error(`localStorage remove failed for ${key}`, error);
+            }
+        }
+
+        function safeParseJson(value, fallback) {
+            if (!value) {
+                return fallback;
+            }
+
+            try {
+                return JSON.parse(value);
+            } catch (error) {
+                console.error('JSON parse failed', error);
+                return fallback;
+            }
+        }
+
+        function getMonthStorageKey() {
+            return 'dumpling_brand_month_overview';
+        }
+
+        function getInspirationStorageKey() {
+            return 'dumpling_brand_inspiration_pool';
+        }
+
+        function parseNumber(value) {
+            const numericValue = Number(value);
+            return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
+        }
+
+        function formatNumber(value) {
+            return Number(value || 0).toLocaleString('zh-TW');
+        }
+
+        function calculateInspirationPriority(monetization, difficulty, brandFit) {
+            return Number(monetization || 0) + Number(brandFit || 0) - Number(difficulty || 0);
+        }
+
+        function setActiveButton(view, week = null) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                const isMonth = view === 'month' && btn.dataset.view === 'month';
+                const isWeek = view === 'week' && btn.dataset.view === 'week' && Number(btn.dataset.week) === week;
+                btn.classList.toggle('active', isMonth || isWeek);
+            });
+        }
+
+        function showView(view) {
+            currentView = view;
+            document.getElementById('weekView').classList.toggle('active', view === 'week');
+            document.getElementById('monthView').classList.toggle('active', view === 'month');
+        }
+
+        function selectWeek(week) {
+            currentWeek = week;
+            showView('week');
+            setActiveButton('week', week);
+            clearWeekUI();
+            loadWeekData(week);
+        }
+
+        function selectMonthOverview() {
+            showView('month');
+            setActiveButton('month');
+            clearMonthUI();
+            loadMonthData();
+        }
+
+        function sanitizeNumberInput(el) {
+            if (el.type !== 'number') {
+                return;
+            }
+
+            const numericValue = Number(el.value);
+            if (numericValue < 0 || Number.isNaN(numericValue)) {
+                el.value = 0;
+            }
+        }
+
+        function clearWeekUI() {
+            document.querySelectorAll('.week-field').forEach(el => {
+                if (el.type === 'number') {
+                    el.value = 0;
+                } else if (el.tagName === 'SELECT') {
+                    el.selectedIndex = 0;
+                } else {
+                    el.value = '';
+                }
+            });
+
+            document.getElementById('tableBody').innerHTML = '';
+            document.getElementById('todoList').innerHTML = '';
+            updateWeeklyIncomeTotal();
+            updateLifecycleUI();
+        }
+
+        function clearMonthUI() {
+            document.querySelectorAll('.month-field').forEach(el => {
+                if (el.type === 'number') {
+                    el.value = 0;
+                } else {
+                    el.value = '';
+                }
+            });
+
+            renderMonthSummary({
+                totalMonetization: 0,
+                orders: 0,
+                productIncome: 0,
+                commissionIncome: 0,
+                sponsorIncome: 0,
+                digitalIncome: 0,
+                membershipIncome: 0,
+                works: 0,
+                publishedContent: 0
+            });
+            updateRevenueGoalProgress();
+        }
+
+        function saveWeekData() {
+            const data = {};
+
+            document.querySelectorAll('.week-field').forEach(el => {
+                sanitizeNumberInput(el);
+                data[el.id] = el.value;
+            });
+
+            safeSetStorageItem(getWeekStorageKey(currentWeek), JSON.stringify(data));
+            saveWeekTableData();
+        }
+
+        function loadWeekData(week) {
+            const savedData = safeParseJson(safeGetStorageItem(getWeekStorageKey(week)), null);
+            if (savedData) {
+                const data = savedData;
+                Object.keys(data).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) {
+                        return;
+                    }
+
+                    el.value = data[id];
+                });
+            }
+
+            const savedTable = safeParseJson(safeGetStorageItem(getWeekTableStorageKey(week)), []);
+            if (savedTable.length) {
+                savedTable.forEach(rowData => {
+                    addNewRow(normalizeScheduleRow(rowData));
+                });
+            }
+
+            loadWeekTodoData(week);
+            updateWeeklyIncomeTotal();
+            updateLifecycleUI();
+            updateMonthSummary();
+            updateRevenueGoalProgress();
+        }
+
+        function saveWeekTableData() {
+            const rows = [];
+            document.querySelectorAll('#tableBody tr').forEach(tr => {
+                const fields = tr.querySelectorAll('input, select');
+                rows.push([
+                    fields[0].value,
+                    fields[1].value,
+                    fields[2].value,
+                    fields[3].value,
+                    fields[4].value,
+                    fields[5].value
+                ]);
+            });
+            safeSetStorageItem(getWeekTableStorageKey(currentWeek), JSON.stringify(rows));
+            updateMonthSummary();
+        }
+
+        function addNewRow(data = ['', '', '', 'IG 主帳', '曝光', '未完成']) {
+            const tableBody = document.getElementById('tableBody');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td><span class="mobile-field">日期</span><input class="table-input" type="text" placeholder="例：6/12" value="${data[0]}"></td>
+                <td><span class="mobile-field">主題</span><input class="table-input" type="text" placeholder="主題" value="${data[1]}"></td>
+                <td><span class="mobile-field">類型</span><input class="table-input" type="text" placeholder="例：Reel / 貼文 / 限動" value="${data[2]}"></td>
+                <td>
+                    <span class="mobile-field">發佈平台</span>
+                    <select class="table-select">
+                        <option ${data[3] === 'IG 主帳' ? 'selected' : ''}>IG 主帳</option>
+                        <option ${data[3] === 'IG 日常帳' ? 'selected' : ''}>IG 日常帳</option>
+                        <option ${data[3] === 'TikTok' ? 'selected' : ''}>TikTok</option>
+                        <option ${data[3] === '官網' ? 'selected' : ''}>官網</option>
+                    </select>
+                </td>
+                <td>
+                    <span class="mobile-field">內容目的</span>
+                    <select class="table-select">
+                        <option ${data[4] === '曝光' ? 'selected' : ''}>曝光</option>
+                        <option ${data[4] === '導購' ? 'selected' : ''}>導購</option>
+                        <option ${data[4] === '委託招募' ? 'selected' : ''}>委託招募</option>
+                        <option ${data[4] === '品牌故事' ? 'selected' : ''}>品牌故事</option>
+                        <option ${data[4] === '商品介紹' ? 'selected' : ''}>商品介紹</option>
+                    </select>
+                </td>
+                <td>
+                    <span class="mobile-field">狀態</span>
+                    <select class="table-select">
+                        <option ${data[5] === '未完成' ? 'selected' : ''}>未完成</option>
+                        <option ${data[5] === '進行中' ? 'selected' : ''}>進行中</option>
+                        <option ${data[5] === '已完成' ? 'selected' : ''}>已完成</option>
+                    </select>
+                </td>
+                <td><span class="mobile-field">操作</span><button class="btn secondary" style="padding:8px 12px;" type="button" data-action="remove-row">刪除</button></td>
+            `;
+            tableBody.appendChild(newRow);
+        }
+
+        function removeRow(button) {
+            button.closest('tr').remove();
+            saveWeekTableData();
+        }
+
+        function saveWeekTodoData() {
+            const rows = [];
+            document.querySelectorAll('#todoList .todo-row').forEach(row => {
+                rows.push([
+                    row.querySelector('.todo-check').checked,
+                    row.querySelector('.todo-input').value
+                ]);
+            });
+            safeSetStorageItem(getWeekTodoStorageKey(currentWeek), JSON.stringify(rows));
+        }
+
+        function loadWeekTodoData(week) {
+            const todoList = document.getElementById('todoList');
+            todoList.innerHTML = '';
+            const savedData = safeParseJson(safeGetStorageItem(getWeekTodoStorageKey(week)), null);
+            if (savedData) {
+                savedData.forEach(rowData => addTodoRow(rowData));
+                return;
+            }
+            addTodoRow([false, '']);
+        }
+
+        function addTodoRow(data = [false, '']) {
+            const todoList = document.getElementById('todoList');
+            const row = document.createElement('div');
+            row.className = 'todo-row';
+            row.innerHTML = `
+                <input class="todo-check" type="checkbox" ${data[0] ? 'checked' : ''}>
+                <input class="todo-input" type="text" placeholder="例：回信、出貨、補貨、修改商品頁" value="${data[1] || ''}">
+                <button class="btn secondary" style="padding:8px 12px;" type="button" data-action="remove-todo">刪除</button>
+            `;
+            todoList.appendChild(row);
+            row.classList.toggle('done', Boolean(data[0]));
+            saveWeekTodoData();
+        }
+
+        function toggleTodoRow(checkbox) {
+            checkbox.closest('.todo-row').classList.toggle('done', checkbox.checked);
+            saveWeekTodoData();
+        }
+
+        function removeTodoRow(button) {
+            button.closest('.todo-row').remove();
+            if (!document.querySelector('#todoList .todo-row')) {
+                addTodoRow([false, '']);
+                return;
+            }
+            saveWeekTodoData();
+        }
+
+        function updateWeeklyIncomeTotal() {
+            const incomeIds = [
+                'weeklyProductIncome',
+                'weeklyCommissionIncome',
+                'weeklySponsorIncome',
+                'weeklyDigitalIncome',
+                'weeklyMembershipIncome'
+            ];
+            const total = incomeIds.reduce((sum, id) => sum + parseNumber(document.getElementById(id).value), 0);
+            document.getElementById('weeklyIncomeTotal').textContent = formatNumber(total);
+        }
+
+        function updateLifecycleUI() {
+            const stageIndex = Number(document.getElementById('weeklyLifecycleStage').value || 0);
+            const currentStage = lifecycleStages[stageIndex] || lifecycleStages[0];
+            const progress = (stageIndex / (lifecycleStages.length - 1)) * 100;
+
+            document.getElementById('lifecycleFill').style.width = `${progress}%`;
+            document.getElementById('lifecycleCurrent').textContent = currentStage;
+            document.getElementById('stageList').innerHTML = lifecycleStages.map((stage, index) => {
+                let className = 'stage-pill';
+                if (index < stageIndex) {
+                    className += ' completed';
+                } else if (index === stageIndex) {
+                    className += ' active';
+                }
+                return `<span class="${className}">${stage}</span>`;
+            }).join('');
+        }
+
+        function saveMonthData() {
+            const data = {};
+
+            document.querySelectorAll('.month-field').forEach(el => {
+                sanitizeNumberInput(el);
+                data[el.id] = el.value;
+            });
+
+            safeSetStorageItem(getMonthStorageKey(), JSON.stringify(data));
+            updateRevenueGoalProgress();
+        }
+
+        function loadMonthData() {
+            const savedData = safeParseJson(safeGetStorageItem(getMonthStorageKey()), null);
+            if (savedData) {
+                const data = savedData;
+                Object.keys(data).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.value = data[id];
+                    }
+                });
+            }
+            updateMonthSummary();
+            updateRevenueGoalProgress();
+        }
+
+        function getStoredWeekData(week) {
+            return safeParseJson(safeGetStorageItem(getWeekStorageKey(week)), {});
+        }
+
+        function getStoredWeekTable(week) {
+            return safeParseJson(safeGetStorageItem(getWeekTableStorageKey(week)), []).map(normalizeScheduleRow);
+        }
+
+        function calculateMonthSummary() {
+            const totals = {
+                totalMonetization: 0,
+                orders: 0,
+                productIncome: 0,
+                commissionIncome: 0,
+                sponsorIncome: 0,
+                digitalIncome: 0,
+                membershipIncome: 0,
+                works: 0,
+                publishedContent: 0
+            };
+
+            for (let week = 1; week <= 4; week += 1) {
+                const data = getStoredWeekData(week);
+                const rows = getStoredWeekTable(week);
+
+                totals.orders += parseNumber(data.weeklyOrders);
+                totals.productIncome += parseNumber(data.weeklyProductIncome);
+                totals.commissionIncome += parseNumber(data.weeklyCommissionIncome);
+                totals.sponsorIncome += parseNumber(data.weeklySponsorIncome);
+                totals.digitalIncome += parseNumber(data.weeklyDigitalIncome);
+                totals.membershipIncome += parseNumber(data.weeklyMembershipIncome);
+                totals.works += parseNumber(data.weeklyWorks);
+                totals.publishedContent += rows.filter(row => row[5] === '已完成').length;
+            }
+
+            totals.totalMonetization =
+                totals.productIncome +
+                totals.commissionIncome +
+                totals.sponsorIncome +
+                totals.digitalIncome +
+                totals.membershipIncome;
+
+            return totals;
+        }
+
+        function renderMonthSummary(summary) {
+            document.getElementById('monthRevenueTotal').textContent = formatNumber(summary.totalMonetization);
+            document.getElementById('monthOrdersTotal').textContent = formatNumber(summary.orders);
+            document.getElementById('monthProductIncomeTotal').textContent = formatNumber(summary.productIncome);
+            document.getElementById('monthCommissionIncomeTotal').textContent = formatNumber(summary.commissionIncome);
+            document.getElementById('monthSponsorIncomeTotal').textContent = formatNumber(summary.sponsorIncome);
+            document.getElementById('monthDigitalIncomeTotal').textContent = formatNumber(summary.digitalIncome);
+            document.getElementById('monthMembershipIncomeTotal').textContent = formatNumber(summary.membershipIncome);
+            document.getElementById('monthWorksTotal').textContent = formatNumber(summary.works);
+            document.getElementById('monthPublishedContentTotal').textContent = formatNumber(summary.publishedContent);
+
+            const avg = summary.orders > 0 ? Math.round(summary.totalMonetization / summary.orders) : 0;
+            document.getElementById('averageOrderValue').textContent = formatNumber(avg);
+        }
+
+        function updateMonthSummary() {
+            renderMonthSummary(calculateMonthSummary());
+            updateRevenueGoalProgress();
+        }
+
+        function updateRevenueGoalProgress() {
+            const target = parseNumber(document.getElementById('monthlyRevenueTarget').value);
+            const achieved = calculateMonthSummary().totalMonetization;
+            const gap = Math.max(target - achieved, 0);
+            const rate = target > 0 ? ((achieved / target) * 100).toFixed(1) : '0';
+
+            document.getElementById('monthlyRevenueAchieved').textContent = formatNumber(achieved);
+            document.getElementById('monthlyRevenueGap').textContent = formatNumber(gap);
+            document.getElementById('monthlyRevenueRate').textContent = rate;
+        }
+
+        function saveInspirationData() {
+            const rows = [];
+            document.querySelectorAll('#inspirationBody tr').forEach(tr => {
+                const fields = tr.querySelectorAll('input, select');
+                rows.push([
+                    fields[0].value,
+                    fields[1].value,
+                    fields[2].value,
+                    fields[3].value,
+                    fields[4].value,
+                    fields[5].value,
+                    fields[6].value
+                ]);
+            });
+            safeSetStorageItem(getInspirationStorageKey(), JSON.stringify(rows));
+        }
+
+        function loadInspirationData() {
+            document.getElementById('inspirationBody').innerHTML = '';
+            const savedData = safeParseJson(safeGetStorageItem(getInspirationStorageKey()), null);
+            if (savedData) {
+                savedData.forEach(rowData => addInspirationRow(rowData));
+            }
+        }
+
+        function updateInspirationPriority(trigger) {
+            const row = trigger.closest('tr');
+            const monetization = row.querySelector('[data-score-type="monetization"]').value;
+            const difficulty = row.querySelector('[data-score-type="difficulty"]').value;
+            const brandFit = row.querySelector('[data-score-type="brandFit"]').value;
+            const score = calculateInspirationPriority(monetization, difficulty, brandFit);
+            row.querySelector('[data-role="priorityScore"]').textContent = score;
+            saveInspirationData();
+        }
+
+        function addInspirationRow(data = ['', '', '作品', '3', '3', '3', '未開始']) {
+            const inspirationBody = document.getElementById('inspirationBody');
+            const newRow = document.createElement('tr');
+            const score = calculateInspirationPriority(data[3], data[4], data[5]);
+            newRow.innerHTML = `
+                <td><span class="mobile-field">靈感標題</span><input class="table-input" type="text" placeholder="靈感標題" value="${data[0]}"></td>
+                <td><span class="mobile-field">來源</span><input class="table-input" type="text" placeholder="例：夢境、客人留言、旅行照片" value="${data[1]}"></td>
+                <td>
+                    <span class="mobile-field">可發展方向</span>
+                    <select class="table-select">
+                        <option ${data[2] === '作品' ? 'selected' : ''}>作品</option>
+                        <option ${data[2] === '影片' ? 'selected' : ''}>影片</option>
+                        <option ${data[2] === '商品' ? 'selected' : ''}>商品</option>
+                        <option ${data[2] === '委託' ? 'selected' : ''}>委託</option>
+                        <option ${data[2] === '業配' ? 'selected' : ''}>業配</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="score-stack">
+                        <label class="score-inline">
+                            <span>變現</span>
+                            <select class="table-select" data-score-type="monetization">
+                                <option value="1" ${data[3] === '1' ? 'selected' : ''}>1</option>
+                                <option value="2" ${data[3] === '2' ? 'selected' : ''}>2</option>
+                                <option value="3" ${data[3] === '3' ? 'selected' : ''}>3</option>
+                                <option value="4" ${data[3] === '4' ? 'selected' : ''}>4</option>
+                                <option value="5" ${data[3] === '5' ? 'selected' : ''}>5</option>
+                            </select>
+                        </label>
+                        <label class="score-inline">
+                            <span>難度</span>
+                            <select class="table-select" data-score-type="difficulty">
+                                <option value="1" ${data[4] === '1' ? 'selected' : ''}>1</option>
+                                <option value="2" ${data[4] === '2' ? 'selected' : ''}>2</option>
+                                <option value="3" ${data[4] === '3' ? 'selected' : ''}>3</option>
+                                <option value="4" ${data[4] === '4' ? 'selected' : ''}>4</option>
+                                <option value="5" ${data[4] === '5' ? 'selected' : ''}>5</option>
+                            </select>
+                        </label>
+                        <label class="score-inline">
+                            <span>契合</span>
+                            <select class="table-select" data-score-type="brandFit">
+                                <option value="1" ${data[5] === '1' ? 'selected' : ''}>1</option>
+                                <option value="2" ${data[5] === '2' ? 'selected' : ''}>2</option>
+                                <option value="3" ${data[5] === '3' ? 'selected' : ''}>3</option>
+                                <option value="4" ${data[5] === '4' ? 'selected' : ''}>4</option>
+                                <option value="5" ${data[5] === '5' ? 'selected' : ''}>5</option>
+                            </select>
+                        </label>
+                    </div>
+                </td>
+                <td>
+                    <span class="mobile-field">優先分數</span>
+                    <span class="score-badge" data-role="priorityScore">${score}</span>
+                </td>
+                <td>
+                    <span class="mobile-field">狀態</span>
+                    <select class="table-select">
+                        <option ${data[6] === '未開始' ? 'selected' : ''}>未開始</option>
+                        <option ${data[6] === '發想中' ? 'selected' : ''}>發想中</option>
+                        <option ${data[6] === '製作中' ? 'selected' : ''}>製作中</option>
+                        <option ${data[6] === '已完成' ? 'selected' : ''}>已完成</option>
+                    </select>
+                </td>
+                <td><span class="mobile-field">操作</span><button class="btn secondary" style="padding:8px 12px;" type="button" data-action="remove-inspiration">刪除</button></td>
+            `;
+            inspirationBody.appendChild(newRow);
+        }
+
+        function removeInspirationRow(button) {
+            button.closest('tr').remove();
+            saveInspirationData();
+        }
+
+        function syncField(target) {
+            if (target.classList.contains('week-field')) {
+                sanitizeNumberInput(target);
+                if (target.classList.contains('week-money')) {
+                    updateWeeklyIncomeTotal();
+                }
+                if (target.id === 'weeklyLifecycleStage') {
+                    updateLifecycleUI();
+                }
+                saveWeekData();
+                updateMonthSummary();
+            }
+
+            if (target.classList.contains('month-field')) {
+                sanitizeNumberInput(target);
+                saveMonthData();
+            }
+        }
+
+        function handleWorkspaceInput(event) {
+            const target = event.target;
+
+            if (target.closest('#tableBody')) {
+                saveWeekTableData();
+                return;
+            }
+
+            if (target.closest('#todoList')) {
+                saveWeekTodoData();
+                return;
+            }
+
+            if (target.closest('#inspirationBody')) {
+                if (target.matches('[data-score-type]')) {
+                    updateInspirationPriority(target);
+                } else {
+                    saveInspirationData();
+                }
+                return;
+            }
+
+            syncField(target);
+        }
+
+        function handleWorkspaceChange(event) {
+            const target = event.target;
+
+            if (target.closest('#tableBody')) {
+                saveWeekTableData();
+                return;
+            }
+
+            if (target.closest('#todoList')) {
+                if (target.matches('.todo-check')) {
+                    target.closest('.todo-row').classList.toggle('done', target.checked);
+                }
+                saveWeekTodoData();
+                return;
+            }
+
+            if (target.closest('#inspirationBody')) {
+                if (target.matches('[data-score-type]')) {
+                    updateInspirationPriority(target);
+                } else {
+                    saveInspirationData();
+                }
+                return;
+            }
+
+            syncField(target);
+        }
+
+        function handleWorkspaceClick(event) {
+            const tabBtn = event.target.closest('.tab-btn');
+            if (tabBtn) {
+                if (tabBtn.dataset.view === 'week') {
+                    selectWeek(Number(tabBtn.dataset.week));
+                } else if (tabBtn.dataset.view === 'month') {
+                    selectMonthOverview();
+                }
+                return;
+            }
+
+            const actionButton = event.target.closest('[data-action]');
+            if (!actionButton) {
+                return;
+            }
+
+            switch (actionButton.dataset.action) {
+                case 'reset-all':
+                    resetAllData();
+                    break;
+                case 'add-todo':
+                    addTodoRow();
+                    break;
+                case 'add-post':
+                    addNewRow();
+                    break;
+                case 'add-inspiration':
+                    addInspirationRow();
+                    break;
+                case 'remove-row':
+                    removeRow(actionButton);
+                    break;
+                case 'remove-todo':
+                    removeTodoRow(actionButton);
+                    break;
+                case 'remove-inspiration':
+                    removeInspirationRow(actionButton);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        function bindWorkspaceEvents() {
+            document.addEventListener('click', handleWorkspaceClick);
+            document.addEventListener('input', handleWorkspaceInput);
+            document.addEventListener('change', handleWorkspaceChange);
+        }
+
+        function resetAllData() {
+            if (!confirm('確定要清除所有週資料、月總覽與靈感池嗎？此動作無法復原。')) {
+                return;
+            }
+
+            const removableKeys = [];
+            try {
+                for (let i = 0; i < localStorage.length; i += 1) {
+                    const key = localStorage.key(i);
+                    if (
+                        key.startsWith('dumpling_brand_week_') ||
+                        key.startsWith('dumpling_brand_week_table_') ||
+                        key.startsWith('dumpling_brand_week_todos_') ||
+                        key === 'dumpling_brand_month_overview' ||
+                        key === 'dumpling_brand_inspiration_pool'
+                    ) {
+                        removableKeys.push(key);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to inspect localStorage keys', error);
+            }
+
+            removableKeys.forEach(key => safeRemoveStorageItem(key));
+            location.reload();
+        }
+
+        function initApp() {
+            try {
+                bindWorkspaceEvents();
+                loadInspirationData();
+                loadMonthData();
+                selectWeek(1);
+            } catch (error) {
+                console.error('Initialization failed', error);
+                try {
+                    document.getElementById('weekView').classList.add('active');
+                    document.getElementById('monthView').classList.remove('active');
+                    document.querySelector('.tab-btn[data-view="week"][data-week="1"]').classList.add('active');
+                } catch (innerError) {
+                    console.error('Fallback initialization failed', innerError);
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js').catch(error => {
+                    console.error('Service worker registration failed', error);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
