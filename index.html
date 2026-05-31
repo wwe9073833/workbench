@@ -904,6 +904,7 @@
                                             <option>進行中</option>
                                             <option>完成</option>
                                         </select>
+                                        <button class="btn secondary" type="button" data-action="calendar-top-task" style="margin-top:8px;">📅 加入行事曆</button>
                                     </td>
                                 </tr>
                                 <tr>
@@ -928,6 +929,7 @@
                                             <option>進行中</option>
                                             <option>完成</option>
                                         </select>
+                                        <button class="btn secondary" type="button" data-action="calendar-top-task" style="margin-top:8px;">📅 加入行事曆</button>
                                     </td>
                                 </tr>
                                 <tr>
@@ -952,6 +954,7 @@
                                             <option>進行中</option>
                                             <option>完成</option>
                                         </select>
+                                        <button class="btn secondary" type="button" data-action="calendar-top-task" style="margin-top:8px;">📅 加入行事曆</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -1344,6 +1347,171 @@
             }
         }
 
+        function pad2(value) {
+            return String(value).padStart(2, '0');
+        }
+
+        function escapeIcsText(value) {
+            return String(value || '')
+                .replace(/\\/g, '\\\\')
+                .replace(/;/g, '\\;')
+                .replace(/,/g, '\\,')
+                .replace(/\r?\n/g, '\\n');
+        }
+
+        function toIcsUtcDateTime(date) {
+            return [
+                date.getUTCFullYear(),
+                pad2(date.getUTCMonth() + 1),
+                pad2(date.getUTCDate())
+            ].join('') + 'T' + [
+                pad2(date.getUTCHours()),
+                pad2(date.getUTCMinutes()),
+                pad2(date.getUTCSeconds())
+            ].join('') + 'Z';
+        }
+
+        function parseScheduleDate(text) {
+            const raw = String(text || '').trim();
+            if (!raw) {
+                return null;
+            }
+
+            let match = raw.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
+            if (match) {
+                return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+            }
+
+            match = raw.match(/^(\d{1,2})[-\/.](\d{1,2})$/);
+            if (match) {
+                const currentYear = new Date().getFullYear();
+                return new Date(currentYear, Number(match[1]) - 1, Number(match[2]));
+            }
+
+            const parsed = new Date(raw);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function normalizeTodoRow(row) {
+            if (!Array.isArray(row)) {
+                return [false, ''];
+            }
+
+            return [Boolean(row[0]), String(row[1] || '')];
+        }
+
+        function normalizeInspirationRow(row) {
+            if (!Array.isArray(row)) {
+                return ['', '', '作品', '3', '3', '3', '未開始'];
+            }
+
+            return [
+                String(row[0] || ''),
+                String(row[1] || ''),
+                String(row[2] || '作品'),
+                String(row[3] || '3'),
+                String(row[4] || '3'),
+                String(row[5] || '3'),
+                String(row[6] || '未開始')
+            ];
+        }
+
+        function makeIcsUid(prefix) {
+            return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}@dumpling-art.local`;
+        }
+
+        function buildCalendarHeader() {
+            return [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//DUMPLING ART//創作經營工作台//ZH-TW',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH'
+            ].join('\r\n');
+        }
+
+        function buildCalendarFooter() {
+            return 'END:VCALENDAR';
+        }
+
+        function buildTaskIcs(taskName, taskType, taskWhy) {
+            const now = new Date();
+            const startLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0);
+            const endLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0, 0);
+            const lines = [
+                buildCalendarHeader(),
+                'BEGIN:VEVENT',
+                `UID:${makeIcsUid('task')}`,
+                `DTSTAMP:${toIcsUtcDateTime(new Date())}`,
+                `SUMMARY:${escapeIcsText(taskName || '未命名任務')}`,
+                `DESCRIPTION:${escapeIcsText(`類型：${taskType || ''}\n為什麼重要：${taskWhy || ''}`)}`,
+                `DTSTART:${toIcsUtcDateTime(startLocal)}`,
+                `DTEND:${toIcsUtcDateTime(endLocal)}`,
+                'END:VEVENT',
+                buildCalendarFooter()
+            ];
+            return lines.join('\r\n');
+        }
+
+        function buildScheduleIcs(platform, topic, type, purpose, status, dateText) {
+            const parsedDate = parseScheduleDate(dateText);
+            if (!parsedDate) {
+                return null;
+            }
+
+            const startLocal = new Date(
+                parsedDate.getFullYear(),
+                parsedDate.getMonth(),
+                parsedDate.getDate(),
+                20,
+                0,
+                0
+            );
+            const endLocal = new Date(
+                parsedDate.getFullYear(),
+                parsedDate.getMonth(),
+                parsedDate.getDate(),
+                20,
+                30,
+                0
+            );
+
+            const lines = [
+                buildCalendarHeader(),
+                'BEGIN:VEVENT',
+                `UID:${makeIcsUid('post')}`,
+                `DTSTAMP:${toIcsUtcDateTime(new Date())}`,
+                `SUMMARY:${escapeIcsText(`【${platform || ''}】${topic || '未命名發佈'}`)}`,
+                `DESCRIPTION:${escapeIcsText(`平台：${platform || ''}\n類型：${type || ''}\n內容目的：${purpose || ''}\n狀態：${status || ''}`)}`,
+                `DTSTART:${toIcsUtcDateTime(startLocal)}`,
+                `DTEND:${toIcsUtcDateTime(endLocal)}`,
+                'END:VEVENT',
+                buildCalendarFooter()
+            ];
+            return lines.join('\r\n');
+        }
+
+        function downloadIcsFile(filename, icsText) {
+            const blob = new Blob([icsText], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.rel = 'noopener';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function sanitizeFileName(value) {
+            return String(value || 'calendar')
+                .trim()
+                .replace(/[\\/:*?"<>|]+/g, '_')
+                .replace(/\s+/g, '_')
+                .slice(0, 80) || 'calendar';
+        }
+
         function getMonthStorageKey() {
             return 'dumpling_brand_month_overview';
         }
@@ -1459,7 +1627,7 @@
 
         function loadWeekData(week) {
             const savedData = safeParseJson(safeGetStorageItem(getWeekStorageKey(week)), null);
-            if (savedData) {
+            if (savedData && typeof savedData === 'object' && !Array.isArray(savedData)) {
                 const data = savedData;
                 Object.keys(data).forEach(id => {
                     const el = document.getElementById(id);
@@ -1472,7 +1640,7 @@
             }
 
             const savedTable = safeParseJson(safeGetStorageItem(getWeekTableStorageKey(week)), []);
-            if (savedTable.length) {
+            if (Array.isArray(savedTable) && savedTable.length) {
                 savedTable.forEach(rowData => {
                     addNewRow(normalizeScheduleRow(rowData));
                 });
@@ -1536,7 +1704,13 @@
                         <option ${data[5] === '已完成' ? 'selected' : ''}>已完成</option>
                     </select>
                 </td>
-                <td><span class="mobile-field">操作</span><button class="btn secondary" style="padding:8px 12px;" type="button" data-action="remove-row">刪除</button></td>
+                <td>
+                    <span class="mobile-field">操作</span>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn secondary" style="padding:8px 12px;" type="button" data-action="calendar-schedule-task">📅 加入行事曆</button>
+                        <button class="btn secondary" style="padding:8px 12px;" type="button" data-action="remove-row">刪除</button>
+                    </div>
+                </td>
             `;
             tableBody.appendChild(newRow);
         }
@@ -1544,6 +1718,45 @@
         function removeRow(button) {
             button.closest('tr').remove();
             saveWeekTableData();
+        }
+
+        function exportTopTaskToCalendar(button) {
+            const row = button.closest('tr');
+            if (!row) {
+                return;
+            }
+
+            const fields = row.querySelectorAll('input, select');
+            const taskName = (fields[0]?.value || '').trim() || '未命名任務';
+            const taskType = fields[1]?.value || '';
+            const taskWhy = fields[2]?.value || '';
+            const icsText = buildTaskIcs(taskName, taskType, taskWhy);
+            const fileName = `${sanitizeFileName(taskName)}.ics`;
+            downloadIcsFile(fileName, icsText);
+        }
+
+        function exportScheduleToCalendar(button) {
+            const row = button.closest('tr');
+            if (!row) {
+                return;
+            }
+
+            const fields = row.querySelectorAll('input, select');
+            const dateText = fields[0]?.value || '';
+            const topic = fields[1]?.value || '';
+            const type = fields[2]?.value || '';
+            const platform = fields[3]?.value || '';
+            const purpose = fields[4]?.value || '';
+            const status = fields[5]?.value || '';
+            const icsText = buildScheduleIcs(platform, topic, type, purpose, status, dateText);
+
+            if (!icsText) {
+                alert('請先填入有效的排程日期');
+                return;
+            }
+
+            const fileName = `${sanitizeFileName(`${platform}_${topic || '發佈'}_${dateText || 'date'}`)}.ics`;
+            downloadIcsFile(fileName, icsText);
         }
 
         function saveWeekTodoData() {
@@ -1561,24 +1774,25 @@
             const todoList = document.getElementById('todoList');
             todoList.innerHTML = '';
             const savedData = safeParseJson(safeGetStorageItem(getWeekTodoStorageKey(week)), null);
-            if (savedData) {
-                savedData.forEach(rowData => addTodoRow(rowData));
+            if (Array.isArray(savedData) && savedData.length) {
+                savedData.forEach(rowData => addTodoRow(normalizeTodoRow(rowData)));
                 return;
             }
             addTodoRow([false, '']);
         }
 
         function addTodoRow(data = [false, '']) {
+            const normalizedData = normalizeTodoRow(data);
             const todoList = document.getElementById('todoList');
             const row = document.createElement('div');
             row.className = 'todo-row';
             row.innerHTML = `
-                <input class="todo-check" type="checkbox" ${data[0] ? 'checked' : ''}>
-                <input class="todo-input" type="text" placeholder="例：回信、出貨、補貨、修改商品頁" value="${data[1] || ''}">
+                <input class="todo-check" type="checkbox" ${normalizedData[0] ? 'checked' : ''}>
+                <input class="todo-input" type="text" placeholder="例：回信、出貨、補貨、修改商品頁" value="${normalizedData[1] || ''}">
                 <button class="btn secondary" style="padding:8px 12px;" type="button" data-action="remove-todo">刪除</button>
             `;
             todoList.appendChild(row);
-            row.classList.toggle('done', Boolean(data[0]));
+            row.classList.toggle('done', Boolean(normalizedData[0]));
             saveWeekTodoData();
         }
 
@@ -1658,7 +1872,8 @@
         }
 
         function getStoredWeekTable(week) {
-            return safeParseJson(safeGetStorageItem(getWeekTableStorageKey(week)), []).map(normalizeScheduleRow);
+            const savedTable = safeParseJson(safeGetStorageItem(getWeekTableStorageKey(week)), []);
+            return Array.isArray(savedTable) ? savedTable.map(normalizeScheduleRow) : [];
         }
 
         function calculateMonthSummary() {
@@ -1749,8 +1964,8 @@
         function loadInspirationData() {
             document.getElementById('inspirationBody').innerHTML = '';
             const savedData = safeParseJson(safeGetStorageItem(getInspirationStorageKey()), null);
-            if (savedData) {
-                savedData.forEach(rowData => addInspirationRow(rowData));
+            if (Array.isArray(savedData) && savedData.length) {
+                savedData.forEach(rowData => addInspirationRow(normalizeInspirationRow(rowData)));
             }
         }
 
@@ -1765,20 +1980,21 @@
         }
 
         function addInspirationRow(data = ['', '', '作品', '3', '3', '3', '未開始']) {
+            const normalizedData = normalizeInspirationRow(data);
             const inspirationBody = document.getElementById('inspirationBody');
             const newRow = document.createElement('tr');
-            const score = calculateInspirationPriority(data[3], data[4], data[5]);
+            const score = calculateInspirationPriority(normalizedData[3], normalizedData[4], normalizedData[5]);
             newRow.innerHTML = `
-                <td><span class="mobile-field">靈感標題</span><input class="table-input" type="text" placeholder="靈感標題" value="${data[0]}"></td>
-                <td><span class="mobile-field">來源</span><input class="table-input" type="text" placeholder="例：夢境、客人留言、旅行照片" value="${data[1]}"></td>
+                <td><span class="mobile-field">靈感標題</span><input class="table-input" type="text" placeholder="靈感標題" value="${normalizedData[0]}"></td>
+                <td><span class="mobile-field">來源</span><input class="table-input" type="text" placeholder="例：夢境、客人留言、旅行照片" value="${normalizedData[1]}"></td>
                 <td>
                     <span class="mobile-field">可發展方向</span>
                     <select class="table-select">
-                        <option ${data[2] === '作品' ? 'selected' : ''}>作品</option>
-                        <option ${data[2] === '影片' ? 'selected' : ''}>影片</option>
-                        <option ${data[2] === '商品' ? 'selected' : ''}>商品</option>
-                        <option ${data[2] === '委託' ? 'selected' : ''}>委託</option>
-                        <option ${data[2] === '業配' ? 'selected' : ''}>業配</option>
+                        <option ${normalizedData[2] === '作品' ? 'selected' : ''}>作品</option>
+                        <option ${normalizedData[2] === '影片' ? 'selected' : ''}>影片</option>
+                        <option ${normalizedData[2] === '商品' ? 'selected' : ''}>商品</option>
+                        <option ${normalizedData[2] === '委託' ? 'selected' : ''}>委託</option>
+                        <option ${normalizedData[2] === '業配' ? 'selected' : ''}>業配</option>
                     </select>
                 </td>
                 <td>
@@ -1786,31 +2002,31 @@
                         <label class="score-inline">
                             <span>變現</span>
                             <select class="table-select" data-score-type="monetization">
-                                <option value="1" ${data[3] === '1' ? 'selected' : ''}>1</option>
-                                <option value="2" ${data[3] === '2' ? 'selected' : ''}>2</option>
-                                <option value="3" ${data[3] === '3' ? 'selected' : ''}>3</option>
-                                <option value="4" ${data[3] === '4' ? 'selected' : ''}>4</option>
-                                <option value="5" ${data[3] === '5' ? 'selected' : ''}>5</option>
+                                <option value="1" ${normalizedData[3] === '1' ? 'selected' : ''}>1</option>
+                                <option value="2" ${normalizedData[3] === '2' ? 'selected' : ''}>2</option>
+                                <option value="3" ${normalizedData[3] === '3' ? 'selected' : ''}>3</option>
+                                <option value="4" ${normalizedData[3] === '4' ? 'selected' : ''}>4</option>
+                                <option value="5" ${normalizedData[3] === '5' ? 'selected' : ''}>5</option>
                             </select>
                         </label>
                         <label class="score-inline">
                             <span>難度</span>
                             <select class="table-select" data-score-type="difficulty">
-                                <option value="1" ${data[4] === '1' ? 'selected' : ''}>1</option>
-                                <option value="2" ${data[4] === '2' ? 'selected' : ''}>2</option>
-                                <option value="3" ${data[4] === '3' ? 'selected' : ''}>3</option>
-                                <option value="4" ${data[4] === '4' ? 'selected' : ''}>4</option>
-                                <option value="5" ${data[4] === '5' ? 'selected' : ''}>5</option>
+                                <option value="1" ${normalizedData[4] === '1' ? 'selected' : ''}>1</option>
+                                <option value="2" ${normalizedData[4] === '2' ? 'selected' : ''}>2</option>
+                                <option value="3" ${normalizedData[4] === '3' ? 'selected' : ''}>3</option>
+                                <option value="4" ${normalizedData[4] === '4' ? 'selected' : ''}>4</option>
+                                <option value="5" ${normalizedData[4] === '5' ? 'selected' : ''}>5</option>
                             </select>
                         </label>
                         <label class="score-inline">
                             <span>契合</span>
                             <select class="table-select" data-score-type="brandFit">
-                                <option value="1" ${data[5] === '1' ? 'selected' : ''}>1</option>
-                                <option value="2" ${data[5] === '2' ? 'selected' : ''}>2</option>
-                                <option value="3" ${data[5] === '3' ? 'selected' : ''}>3</option>
-                                <option value="4" ${data[5] === '4' ? 'selected' : ''}>4</option>
-                                <option value="5" ${data[5] === '5' ? 'selected' : ''}>5</option>
+                                <option value="1" ${normalizedData[5] === '1' ? 'selected' : ''}>1</option>
+                                <option value="2" ${normalizedData[5] === '2' ? 'selected' : ''}>2</option>
+                                <option value="3" ${normalizedData[5] === '3' ? 'selected' : ''}>3</option>
+                                <option value="4" ${normalizedData[5] === '4' ? 'selected' : ''}>4</option>
+                                <option value="5" ${normalizedData[5] === '5' ? 'selected' : ''}>5</option>
                             </select>
                         </label>
                     </div>
@@ -1822,10 +2038,10 @@
                 <td>
                     <span class="mobile-field">狀態</span>
                     <select class="table-select">
-                        <option ${data[6] === '未開始' ? 'selected' : ''}>未開始</option>
-                        <option ${data[6] === '發想中' ? 'selected' : ''}>發想中</option>
-                        <option ${data[6] === '製作中' ? 'selected' : ''}>製作中</option>
-                        <option ${data[6] === '已完成' ? 'selected' : ''}>已完成</option>
+                        <option ${normalizedData[6] === '未開始' ? 'selected' : ''}>未開始</option>
+                        <option ${normalizedData[6] === '發想中' ? 'selected' : ''}>發想中</option>
+                        <option ${normalizedData[6] === '製作中' ? 'selected' : ''}>製作中</option>
+                        <option ${normalizedData[6] === '已完成' ? 'selected' : ''}>已完成</option>
                     </select>
                 </td>
                 <td><span class="mobile-field">操作</span><button class="btn secondary" style="padding:8px 12px;" type="button" data-action="remove-inspiration">刪除</button></td>
@@ -1947,6 +2163,12 @@
                     break;
                 case 'remove-inspiration':
                     removeInspirationRow(actionButton);
+                    break;
+                case 'calendar-top-task':
+                    exportTopTaskToCalendar(actionButton);
+                    break;
+                case 'calendar-schedule-task':
+                    exportScheduleToCalendar(actionButton);
                     break;
                 default:
                     break;
