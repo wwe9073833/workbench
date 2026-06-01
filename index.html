@@ -1047,7 +1047,10 @@
 
             <div class="table-section">
                 <div class="section-shell">
-                    <div class="table-title">📅 本週發佈排程</div>
+                    <div class="table-title" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <span>📅 本週發佈排程</span>
+                        <button class="btn secondary" style="padding:8px 12px;" type="button" data-action="sort-week-schedule">依日期排序</button>
+                    </div>
                     <div class="table-subtitle">把同一份內容分開記錄到不同平台，讓你一眼看出哪個平台已發、未發或漏發。</div>
                     <div class="table-wrap">
                         <table>
@@ -1402,13 +1405,13 @@
             if (row.length >= 6) {
                 const isNewFormatPlatform = ['IG 主帳', 'IG 日常帳', 'TikTok', '官網'].includes(row[3]);
                 if (isNewFormatPlatform) {
-                    return [row[0], row[1], row[2], normalizeSchedulePlatform(row[3]), row[4], normalizeScheduleStatus(row[5])];
+                    return [normalizeScheduleDateValue(row[0]), row[1], row[2], normalizeSchedulePlatform(row[3]), row[4], normalizeScheduleStatus(row[5])];
                 }
-                return [row[0], row[1], row[2], 'IG 主帳', row[3], normalizeScheduleStatus(row[5])];
+                return [normalizeScheduleDateValue(row[0]), row[1], row[2], 'IG 主帳', row[3], normalizeScheduleStatus(row[5])];
             }
 
             if (row.length === 5) {
-                return [row[0], row[1], row[2], 'IG 主帳', row[3], normalizeScheduleStatus(row[4])];
+                return [normalizeScheduleDateValue(row[0]), row[1], row[2], 'IG 主帳', row[3], normalizeScheduleStatus(row[4])];
             }
 
             return ['', '', '', 'IG 主帳', '曝光', '未完成'];
@@ -1497,6 +1500,34 @@
 
             const parsed = new Date(raw);
             return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function formatScheduleDateValue(date) {
+            return [
+                date.getFullYear(),
+                pad2(date.getMonth() + 1),
+                pad2(date.getDate())
+            ].join('-');
+        }
+
+        function normalizeScheduleDateValue(value) {
+            const raw = String(value || '').trim();
+            if (!raw) {
+                return '';
+            }
+
+            const parsed = parseScheduleDate(raw);
+            return parsed ? formatScheduleDateValue(parsed) : '';
+        }
+
+        function getScheduleDateSortTime(value) {
+            const normalized = normalizeScheduleDateValue(value);
+            if (!normalized) {
+                return Number.POSITIVE_INFINITY;
+            }
+
+            const parsed = parseScheduleDate(normalized);
+            return parsed ? parsed.getTime() : Number.POSITIVE_INFINITY;
         }
 
         function normalizeTodoRow(row) {
@@ -2292,7 +2323,7 @@
             document.querySelectorAll('#tableBody tr').forEach(tr => {
                 const fields = tr.querySelectorAll('input, select');
                 rows.push([
-                    fields[0].value,
+                    normalizeScheduleDateValue(fields[0].value),
                     fields[1].value,
                     fields[2].value,
                     fields[3].value,
@@ -2309,7 +2340,7 @@
             const tableBody = document.getElementById('tableBody');
             const newRow = document.createElement('tr');
             newRow.innerHTML = `
-                <td><span class="mobile-field">日期</span><input class="table-input" type="text" placeholder="例：6/12" value="${data[0]}"></td>
+                <td><span class="mobile-field">日期</span><input class="table-input" type="date" value="${normalizeScheduleDateValue(data[0])}"></td>
                 <td><span class="mobile-field">主題</span><input class="table-input" type="text" placeholder="主題" value="${data[1]}"></td>
                 <td><span class="mobile-field">類型</span><input class="table-input" type="text" placeholder="例：Reel / 貼文 / 限動" value="${data[2]}"></td>
                 <td>
@@ -2352,6 +2383,27 @@
 
         function removeRow(button) {
             button.closest('tr').remove();
+            saveWeekTableData();
+        }
+
+        function sortWeekScheduleRowsByDate() {
+            const tableBody = document.getElementById('tableBody');
+            const rows = Array.from(tableBody.querySelectorAll('tr')).map((tr, index) => ({ tr, index }));
+
+            rows.sort((a, b) => {
+                const aDate = a.tr.querySelector('input[type="date"]')?.value || '';
+                const bDate = b.tr.querySelector('input[type="date"]')?.value || '';
+                const aTime = getScheduleDateSortTime(aDate);
+                const bTime = getScheduleDateSortTime(bDate);
+
+                if (aTime !== bTime) {
+                    return aTime - bTime;
+                }
+
+                return a.index - b.index;
+            });
+
+            rows.forEach(({ tr }) => tableBody.appendChild(tr));
             saveWeekTableData();
         }
 
@@ -2836,6 +2888,9 @@
                     break;
                 case 'add-post':
                     addNewRow();
+                    break;
+                case 'sort-week-schedule':
+                    sortWeekScheduleRowsByDate();
                     break;
                 case 'add-inspiration':
                     addInspirationRow();
