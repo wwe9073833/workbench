@@ -1118,6 +1118,10 @@
                             <input class="metric-input week-field" type="number" id="weeklyWorks" min="0" value="0">
                         </div>
                         <div>
+                            <label class="metric-label" for="weeklyPosts">本週貼文數</label>
+                            <input class="metric-input week-field" type="number" id="weeklyPosts" min="0" value="0" readonly>
+                        </div>
+                        <div>
                             <div class="metric-label">生命週期進度</div>
                             <div class="lifecycle-bar">
                                 <div class="lifecycle-fill" id="lifecycleFill"></div>
@@ -1173,16 +1177,13 @@
             <div class="table-section">
                 <div class="section-shell">
                     <div class="table-title">💡 靈感池</div>
-                    <div class="table-subtitle">先記下靈感，評分欄位都有預設值，需要時再微調，不用每次新增都填很多東西。</div>
+                    <div class="table-subtitle">先記下靈感，類型和狀態就好，不需要再花時間評分。</div>
                     <div class="table-wrap">
                         <table>
                             <thead>
                                 <tr>
                                     <th>靈感標題</th>
-                                    <th>來源</th>
-                                    <th>可發展方向</th>
-                                    <th>評分</th>
-                                    <th>優先分數</th>
+                                    <th>類型</th>
                                     <th>狀態</th>
                                     <th>操作</th>
                                 </tr>
@@ -1196,7 +1197,7 @@
         </section>
 
         <section id="monthView" class="view-panel">
-            <div class="section-intro">這裡再看本月營收目標與整體累積就好。每天執行時先回到週頁面，月底或每週再來檢查這些數字。</div>
+            <div class="section-intro">這裡只看本月真正會影響決策的數字。每天執行時先回到週頁面，月底或每週再來檢查這些累積。</div>
 
             <div class="goal-strip">
                 <div class="card">
@@ -1229,7 +1230,24 @@
             <div class="month-grid">
                 <div class="card">
                     <div class="card-title">
-                        <span>本月變現輪廓</span>
+                        <span>本月創作與發佈</span>
+                        <span class="pill">自動彙總</span>
+                    </div>
+                    <div class="review-grid">
+                        <div class="month-item">
+                            <div class="review-label">本月作品數</div>
+                            <div class="summary-value"><span id="monthWorksTotal">0</span></div>
+                        </div>
+                        <div class="month-item">
+                            <div class="review-label">本月貼文數</div>
+                            <div class="summary-value"><span id="monthPostsTotal">0</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">
+                        <span>本月變現</span>
                         <span class="pill">自動彙總</span>
                     </div>
                     <div class="review-grid">
@@ -1246,62 +1264,37 @@
                             <div class="summary-value">NT$ <span id="averageOrderValue">0</span></div>
                         </div>
                         <div class="month-item">
-                            <div class="review-label">商品收入</div>
-                            <div class="summary-value">NT$ <span id="monthProductIncomeTotal">0</span></div>
+                            <label class="review-label" for="monthlyCommissionCount">本月委託數</label>
+                            <input class="month-input month-field" type="number" id="monthlyCommissionCount" min="0" value="0">
                         </div>
                         <div class="month-item">
-                            <div class="review-label">委託收入</div>
-                            <div class="summary-value">NT$ <span id="monthCommissionIncomeTotal">0</span></div>
-                        </div>
-                        <div class="month-item">
-                            <div class="review-label">業配收入</div>
-                            <div class="summary-value">NT$ <span id="monthSponsorIncomeTotal">0</span></div>
-                        </div>
-                        <div class="month-item">
-                            <div class="review-label">數位商品收入</div>
-                            <div class="summary-value">NT$ <span id="monthDigitalIncomeTotal">0</span></div>
-                        </div>
-                        <div class="month-item">
-                            <div class="review-label">訂閱／會員收入</div>
-                            <div class="summary-value">NT$ <span id="monthMembershipIncomeTotal">0</span></div>
+                            <label class="review-label" for="monthlyNewProducts">本月新品數</label>
+                            <input class="month-input month-field" type="number" id="monthlyNewProducts" min="0" value="0">
                         </div>
                     </div>
                 </div>
 
                 <div class="card">
                     <div class="card-title">
-                        <span>本月創作節奏</span>
+                        <span>靈感統計</span>
                         <span class="pill">自動彙總</span>
                     </div>
                     <div class="review-grid">
                         <div class="month-item">
-                            <div class="review-label">本月完成作品</div>
-                            <div class="summary-value"><span id="monthWorksTotal">0</span></div>
+                            <div class="review-label">靈感總數</div>
+                            <div class="summary-value"><span id="inspirationTotalCount">0</span></div>
                         </div>
                         <div class="month-item">
-                            <div class="review-label">本月發布內容</div>
-                            <div class="summary-value"><span id="monthPublishedContentTotal">0</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">
-                        <span>本月亮點觀察</span>
-                        <span class="pill">手動紀錄</span>
-                    </div>
-                    <div class="review-grid">
-                        <div class="month-item">
-                            <label class="review-label" for="monthValueWork">本月最有價值作品</label>
-                            <input class="month-input month-field" type="text" id="monthValueWork" placeholder="例：角色系列主視覺、幕後訪談影片">
+                            <div class="review-label">未開始數量</div>
+                            <div class="summary-value"><span id="inspirationNotStartedCount">0</span></div>
                         </div>
                         <div class="month-item">
-                            <label class="review-label" for="monthPotentialProduct">本月最有潛力商品</label>
-                            <input class="month-input month-field" type="text" id="monthPotentialProduct" placeholder="例：貼圖包、明信片組、電子桌布">
+                            <div class="review-label">製作中數量</div>
+                            <div class="summary-value"><span id="inspirationWorkingCount">0</span></div>
                         </div>
-                        <div class="month-item" style="grid-column: 1 / -1;">
-                            <label class="review-label" for="monthRequestedContent">本月粉絲敲碗內容</label>
-                            <input class="month-input month-field" type="text" id="monthRequestedContent" placeholder="例：更多繪圖過程、角色設定故事、商品開箱">
+                        <div class="month-item">
+                            <div class="review-label">已完成數量</div>
+                            <div class="summary-value"><span id="inspirationDoneCount">0</span></div>
                         </div>
                     </div>
                 </div>
@@ -1695,19 +1688,51 @@
             };
         }
 
+        function normalizeInspirationType(type) {
+            const allowedTypes = ['插畫', '貼文', '短影音', '商品', '委託', '品牌', '其他'];
+            return allowedTypes.includes(type) ? type : '其他';
+        }
+
+        function normalizeInspirationStatus(status) {
+            if (status === '未開始' || status === '製作中' || status === '已完成') {
+                return status;
+            }
+
+            if (status === '發想中') {
+                return '製作中';
+            }
+
+            return '未開始';
+        }
+
+        function pickLegacyInspirationStatus(row) {
+            if (!Array.isArray(row)) {
+                return '未開始';
+            }
+
+            for (const value of [row[2], row[5], row[6], row[4], row[3], row[1], row[0]]) {
+                const rawValue = String(value || '').trim();
+                if (!rawValue) {
+                    continue;
+                }
+
+                if (rawValue === '未開始' || rawValue === '製作中' || rawValue === '已完成' || rawValue === '發想中') {
+                    return normalizeInspirationStatus(rawValue);
+                }
+            }
+
+            return '未開始';
+        }
+
         function normalizeInspirationRow(row) {
             if (!Array.isArray(row)) {
-                return ['', '', '作品', '3', '3', '3', '未開始'];
+                return ['', '其他', '未開始'];
             }
 
             return [
                 String(row[0] || ''),
-                String(row[1] || ''),
-                String(row[2] || '作品'),
-                String(row[3] || '3'),
-                String(row[4] || '3'),
-                String(row[5] || '3'),
-                String(row[6] || '未開始')
+                normalizeInspirationType(String(row[1] || '')),
+                pickLegacyInspirationStatus(row)
             ];
         }
 
@@ -1862,13 +1887,26 @@
             return Number(value || 0).toLocaleString('zh-TW');
         }
 
-        function calculateInspirationPriority(monetization, difficulty, brandFit) {
-            return Number(monetization || 0) + Number(brandFit || 0) - Number(difficulty || 0);
+        function normalizeMonthData(source) {
+            const normalized = {};
+            const allowedKeys = ['monthlyRevenueTarget', 'monthlyCommissionCount', 'monthlyNewProducts', 'monthGoal'];
+
+            if (!source || typeof source !== 'object' || Array.isArray(source)) {
+                return normalized;
+            }
+
+            allowedKeys.forEach(key => {
+                if (Object.prototype.hasOwnProperty.call(source, key)) {
+                    normalized[key] = String(source[key] ?? '');
+                }
+            });
+
+            return normalized;
         }
 
         const FIREBASE_COLLECTION_NAME = 'creator_workbench_sync';
         const FIREBASE_DOCUMENT_ID = 'main';
-        const FIREBASE_STATE_VERSION = 2;
+        const FIREBASE_STATE_VERSION = 3;
         const FIREBASE_PENDING_CLEAR_FLAG = 'dumpling_brand_firebase_pending_clear';
 
         let firebaseAppInstance = null;
@@ -1933,9 +1971,7 @@
             const migratedDailyTodoState = migrateLegacyWeekTodosIntoDailyTodos(state.dailyTodos, state.weekTodos);
             state.dailyTodos = migratedDailyTodoState.dailyTodos;
             migratedLegacyTodos = migratedDailyTodoState.migrated;
-            state.monthData = normalizedSource.monthData && typeof normalizedSource.monthData === 'object' && !Array.isArray(normalizedSource.monthData)
-                ? normalizedSource.monthData
-                : {};
+            state.monthData = normalizeMonthData(normalizedSource.monthData);
             state.inspiration = Array.isArray(normalizedSource.inspiration)
                 ? normalizedSource.inspiration.map(normalizeInspirationRow)
                 : [];
@@ -2007,7 +2043,7 @@
 
             state.dailyTodos = getStoredDailyTodoMapWithLegacyMigration().dailyTodos;
             const savedMonthData = safeParseJson(safeGetStorageItem(getMonthStorageKey()), {});
-            state.monthData = savedMonthData && typeof savedMonthData === 'object' && !Array.isArray(savedMonthData) ? savedMonthData : {};
+            state.monthData = normalizeMonthData(savedMonthData);
             state.inspiration = getStoredInspirationRows();
 
             return state;
@@ -2390,7 +2426,7 @@
             updateRevenueGoalProgress();
         }
 
-        function saveWeekData() {
+        function saveWeekFieldData() {
             const data = {};
 
             document.querySelectorAll('.week-field').forEach(el => {
@@ -2399,7 +2435,34 @@
             });
 
             safeSetStorageItem(getWeekStorageKey(currentWeek), JSON.stringify(data));
-            saveWeekTableData();
+        }
+
+        function getCompletedSchedulePostCount() {
+            return Array.from(document.querySelectorAll('#tableBody tr')).filter(tr => {
+                const fields = tr.querySelectorAll('input, select');
+                return fields[6]?.value === '已完成';
+            }).length;
+        }
+
+        function updateWeeklyPostsCount(persist = true) {
+            const weeklyPostsInput = document.getElementById('weeklyPosts');
+            if (!weeklyPostsInput) {
+                return 0;
+            }
+
+            const count = getCompletedSchedulePostCount();
+            weeklyPostsInput.value = String(count);
+
+            if (persist) {
+                saveWeekFieldData();
+                scheduleWorkspaceCloudSync();
+            }
+
+            return count;
+        }
+
+        function saveWeekData() {
+            saveWeekFieldData();
             scheduleWorkspaceCloudSync();
         }
 
@@ -2424,6 +2487,7 @@
                 });
             }
 
+            updateWeeklyPostsCount(true);
             loadDailyTodoData(currentTodoDate);
             updateWeeklyIncomeTotal();
             updateLifecycleUI();
@@ -2441,8 +2505,8 @@
                 fields[1].value = rowData[1];
             });
             safeSetStorageItem(getWeekTableStorageKey(currentWeek), JSON.stringify(rows));
+            updateWeeklyPostsCount(true);
             updateMonthSummary();
-            scheduleWorkspaceCloudSync();
         }
 
         function addNewRow(data = ['', '', '', '', 'IG 主帳', '曝光', '未完成']) {
@@ -2683,7 +2747,7 @@
                 data[el.id] = el.value;
             });
 
-            safeSetStorageItem(getMonthStorageKey(), JSON.stringify(data));
+            safeSetStorageItem(getMonthStorageKey(), JSON.stringify(normalizeMonthData(data)));
             updateRevenueGoalProgress();
             scheduleWorkspaceCloudSync();
         }
@@ -2691,7 +2755,7 @@
         function loadMonthData() {
             const savedData = safeParseJson(safeGetStorageItem(getMonthStorageKey()), null);
             if (savedData) {
-                const data = savedData;
+                const data = normalizeMonthData(savedData);
                 Object.keys(data).forEach(id => {
                     const el = document.getElementById(id);
                     if (el) {
@@ -2712,17 +2776,39 @@
             return Array.isArray(savedTable) ? savedTable.map(normalizeScheduleRow) : [];
         }
 
+        function getInspirationSummary() {
+            const rows = getStoredInspirationRows();
+            return rows.reduce((summary, row) => {
+                const status = normalizeInspirationStatus(row[2]);
+                summary.total += 1;
+                if (status === '未開始') {
+                    summary.notStarted += 1;
+                } else if (status === '製作中') {
+                    summary.working += 1;
+                } else if (status === '已完成') {
+                    summary.done += 1;
+                }
+                return summary;
+            }, {
+                total: 0,
+                notStarted: 0,
+                working: 0,
+                done: 0
+            });
+        }
+
         function calculateMonthSummary() {
             const totals = {
                 totalMonetization: 0,
                 orders: 0,
-                productIncome: 0,
-                commissionIncome: 0,
-                sponsorIncome: 0,
-                digitalIncome: 0,
-                membershipIncome: 0,
                 works: 0,
-                publishedContent: 0
+                posts: 0,
+                commissionCount: 0,
+                newProducts: 0,
+                inspirationTotal: 0,
+                inspirationNotStarted: 0,
+                inspirationWorking: 0,
+                inspirationDone: 0
             };
 
             for (let week = 1; week <= 4; week += 1) {
@@ -2730,21 +2816,33 @@
                 const rows = getStoredWeekTable(week);
 
                 totals.orders += parseNumber(data.weeklyOrders);
-                totals.productIncome += parseNumber(data.weeklyProductIncome);
-                totals.commissionIncome += parseNumber(data.weeklyCommissionIncome);
-                totals.sponsorIncome += parseNumber(data.weeklySponsorIncome);
-                totals.digitalIncome += parseNumber(data.weeklyDigitalIncome);
-                totals.membershipIncome += parseNumber(data.weeklyMembershipIncome);
                 totals.works += parseNumber(data.weeklyWorks);
-                totals.publishedContent += rows.filter(row => row[6] === '已完成').length;
+                totals.posts += String(data.weeklyPosts ?? '').trim()
+                    ? parseNumber(data.weeklyPosts)
+                    : rows.filter(row => row[6] === '已完成').length;
             }
 
-            totals.totalMonetization =
-                totals.productIncome +
-                totals.commissionIncome +
-                totals.sponsorIncome +
-                totals.digitalIncome +
-                totals.membershipIncome;
+            const monthData = normalizeMonthData(safeParseJson(safeGetStorageItem(getMonthStorageKey()), {}));
+            totals.commissionCount = parseNumber(monthData.monthlyCommissionCount);
+            totals.newProducts = parseNumber(monthData.monthlyNewProducts);
+
+            const inspirationSummary = getInspirationSummary();
+            totals.inspirationTotal = inspirationSummary.total;
+            totals.inspirationNotStarted = inspirationSummary.notStarted;
+            totals.inspirationWorking = inspirationSummary.working;
+            totals.inspirationDone = inspirationSummary.done;
+
+            const incomeTotals = [1, 2, 3, 4].reduce((sum, week) => {
+                const data = getStoredWeekData(week);
+                return sum +
+                    parseNumber(data.weeklyProductIncome) +
+                    parseNumber(data.weeklyCommissionIncome) +
+                    parseNumber(data.weeklySponsorIncome) +
+                    parseNumber(data.weeklyDigitalIncome) +
+                    parseNumber(data.weeklyMembershipIncome);
+            }, 0);
+
+            totals.totalMonetization = incomeTotals;
 
             return totals;
         }
@@ -2752,13 +2850,12 @@
         function renderMonthSummary(summary) {
             document.getElementById('monthRevenueTotal').textContent = formatNumber(summary.totalMonetization);
             document.getElementById('monthOrdersTotal').textContent = formatNumber(summary.orders);
-            document.getElementById('monthProductIncomeTotal').textContent = formatNumber(summary.productIncome);
-            document.getElementById('monthCommissionIncomeTotal').textContent = formatNumber(summary.commissionIncome);
-            document.getElementById('monthSponsorIncomeTotal').textContent = formatNumber(summary.sponsorIncome);
-            document.getElementById('monthDigitalIncomeTotal').textContent = formatNumber(summary.digitalIncome);
-            document.getElementById('monthMembershipIncomeTotal').textContent = formatNumber(summary.membershipIncome);
             document.getElementById('monthWorksTotal').textContent = formatNumber(summary.works);
-            document.getElementById('monthPublishedContentTotal').textContent = formatNumber(summary.publishedContent);
+            document.getElementById('monthPostsTotal').textContent = formatNumber(summary.posts);
+            document.getElementById('inspirationTotalCount').textContent = formatNumber(summary.inspirationTotal);
+            document.getElementById('inspirationNotStartedCount').textContent = formatNumber(summary.inspirationNotStarted);
+            document.getElementById('inspirationWorkingCount').textContent = formatNumber(summary.inspirationWorking);
+            document.getElementById('inspirationDoneCount').textContent = formatNumber(summary.inspirationDone);
 
             const avg = summary.orders > 0 ? Math.round(summary.totalMonetization / summary.orders) : 0;
             document.getElementById('averageOrderValue').textContent = formatNumber(avg);
@@ -2787,14 +2884,11 @@
                 rows.push([
                     fields[0].value,
                     fields[1].value,
-                    fields[2].value,
-                    fields[3].value,
-                    fields[4].value,
-                    fields[5].value,
-                    fields[6].value
+                    fields[2].value
                 ]);
             });
             safeSetStorageItem(getInspirationStorageKey(), JSON.stringify(rows));
+            updateMonthSummary();
             scheduleWorkspaceCloudSync();
         }
 
@@ -2806,79 +2900,30 @@
             }
         }
 
-        function updateInspirationPriority(trigger) {
-            const row = trigger.closest('tr');
-            const monetization = row.querySelector('[data-score-type="monetization"]').value;
-            const difficulty = row.querySelector('[data-score-type="difficulty"]').value;
-            const brandFit = row.querySelector('[data-score-type="brandFit"]').value;
-            const score = calculateInspirationPriority(monetization, difficulty, brandFit);
-            row.querySelector('[data-role="priorityScore"]').textContent = score;
-            saveInspirationData();
-        }
-
-        function addInspirationRow(data = ['', '', '作品', '3', '3', '3', '未開始']) {
+        function addInspirationRow(data = ['', '其他', '未開始']) {
             const normalizedData = normalizeInspirationRow(data);
             const inspirationBody = document.getElementById('inspirationBody');
             const newRow = document.createElement('tr');
-            const score = calculateInspirationPriority(normalizedData[3], normalizedData[4], normalizedData[5]);
             newRow.innerHTML = `
                 <td><span class="mobile-field">靈感標題</span><input class="table-input" type="text" placeholder="靈感標題" value="${normalizedData[0]}"></td>
-                <td><span class="mobile-field">來源</span><input class="table-input" type="text" placeholder="例：夢境、客人留言、旅行照片" value="${normalizedData[1]}"></td>
                 <td>
-                    <span class="mobile-field">可發展方向</span>
+                    <span class="mobile-field">類型</span>
                     <select class="table-select">
-                        <option ${normalizedData[2] === '作品' ? 'selected' : ''}>作品</option>
-                        <option ${normalizedData[2] === '影片' ? 'selected' : ''}>影片</option>
-                        <option ${normalizedData[2] === '商品' ? 'selected' : ''}>商品</option>
-                        <option ${normalizedData[2] === '委託' ? 'selected' : ''}>委託</option>
-                        <option ${normalizedData[2] === '業配' ? 'selected' : ''}>業配</option>
+                        <option ${normalizedData[1] === '插畫' ? 'selected' : ''}>插畫</option>
+                        <option ${normalizedData[1] === '貼文' ? 'selected' : ''}>貼文</option>
+                        <option ${normalizedData[1] === '短影音' ? 'selected' : ''}>短影音</option>
+                        <option ${normalizedData[1] === '商品' ? 'selected' : ''}>商品</option>
+                        <option ${normalizedData[1] === '委託' ? 'selected' : ''}>委託</option>
+                        <option ${normalizedData[1] === '品牌' ? 'selected' : ''}>品牌</option>
+                        <option ${normalizedData[1] === '其他' ? 'selected' : ''}>其他</option>
                     </select>
-                </td>
-                <td>
-                    <div class="score-stack">
-                        <label class="score-inline">
-                            <span>變現</span>
-                            <select class="table-select" data-score-type="monetization">
-                                <option value="1" ${normalizedData[3] === '1' ? 'selected' : ''}>1</option>
-                                <option value="2" ${normalizedData[3] === '2' ? 'selected' : ''}>2</option>
-                                <option value="3" ${normalizedData[3] === '3' ? 'selected' : ''}>3</option>
-                                <option value="4" ${normalizedData[3] === '4' ? 'selected' : ''}>4</option>
-                                <option value="5" ${normalizedData[3] === '5' ? 'selected' : ''}>5</option>
-                            </select>
-                        </label>
-                        <label class="score-inline">
-                            <span>難度</span>
-                            <select class="table-select" data-score-type="difficulty">
-                                <option value="1" ${normalizedData[4] === '1' ? 'selected' : ''}>1</option>
-                                <option value="2" ${normalizedData[4] === '2' ? 'selected' : ''}>2</option>
-                                <option value="3" ${normalizedData[4] === '3' ? 'selected' : ''}>3</option>
-                                <option value="4" ${normalizedData[4] === '4' ? 'selected' : ''}>4</option>
-                                <option value="5" ${normalizedData[4] === '5' ? 'selected' : ''}>5</option>
-                            </select>
-                        </label>
-                        <label class="score-inline">
-                            <span>契合</span>
-                            <select class="table-select" data-score-type="brandFit">
-                                <option value="1" ${normalizedData[5] === '1' ? 'selected' : ''}>1</option>
-                                <option value="2" ${normalizedData[5] === '2' ? 'selected' : ''}>2</option>
-                                <option value="3" ${normalizedData[5] === '3' ? 'selected' : ''}>3</option>
-                                <option value="4" ${normalizedData[5] === '4' ? 'selected' : ''}>4</option>
-                                <option value="5" ${normalizedData[5] === '5' ? 'selected' : ''}>5</option>
-                            </select>
-                        </label>
-                    </div>
-                </td>
-                <td>
-                    <span class="mobile-field">優先分數</span>
-                    <span class="score-badge" data-role="priorityScore">${score}</span>
                 </td>
                 <td>
                     <span class="mobile-field">狀態</span>
                     <select class="table-select">
-                        <option ${normalizedData[6] === '未開始' ? 'selected' : ''}>未開始</option>
-                        <option ${normalizedData[6] === '發想中' ? 'selected' : ''}>發想中</option>
-                        <option ${normalizedData[6] === '製作中' ? 'selected' : ''}>製作中</option>
-                        <option ${normalizedData[6] === '已完成' ? 'selected' : ''}>已完成</option>
+                        <option ${normalizedData[2] === '未開始' ? 'selected' : ''}>未開始</option>
+                        <option ${normalizedData[2] === '製作中' ? 'selected' : ''}>製作中</option>
+                        <option ${normalizedData[2] === '已完成' ? 'selected' : ''}>已完成</option>
                     </select>
                 </td>
                 <td><span class="mobile-field">操作</span><button class="btn secondary" style="padding:8px 12px;" type="button" data-action="remove-inspiration">刪除</button></td>
@@ -2924,11 +2969,7 @@
             }
 
             if (target.closest('#inspirationBody')) {
-                if (target.matches('[data-score-type]')) {
-                    updateInspirationPriority(target);
-                } else {
-                    saveInspirationData();
-                }
+                saveInspirationData();
                 return;
             }
 
@@ -2957,11 +2998,7 @@
             }
 
             if (target.closest('#inspirationBody')) {
-                if (target.matches('[data-score-type]')) {
-                    updateInspirationPriority(target);
-                } else {
-                    saveInspirationData();
-                }
+                saveInspirationData();
                 return;
             }
 
