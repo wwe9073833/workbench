@@ -373,6 +373,7 @@
         }
 
         .todo-date-row {
+            position: relative;
             display: grid;
             gap: 8px;
             max-width: 240px;
@@ -803,20 +804,21 @@
 
             .todo-date-picker {
                 position: absolute;
-                width: 1px;
-                height: 1px;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                margin: 0;
                 padding: 0;
-                margin: -1px;
-                overflow: hidden;
-                clip: rect(0, 0, 0, 0);
-                white-space: nowrap;
                 border: 0;
                 opacity: 0;
-                pointer-events: none;
+                z-index: 2;
+                cursor: pointer;
             }
 
             .todo-date-trigger {
                 display: inline-flex;
+                position: relative;
+                z-index: 1;
             }
 
             .score-stack {
