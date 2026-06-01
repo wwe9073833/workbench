@@ -1056,7 +1056,8 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>日期</th>
+                                    <th>開始日期</th>
+                                    <th>結束日期</th>
                                     <th>主題</th>
                                     <th>類型</th>
                                     <th>發佈平台</th>
@@ -1399,22 +1400,46 @@
 
         function normalizeScheduleRow(row) {
             if (!Array.isArray(row)) {
-                return ['', '', '', 'IG 主帳', '曝光', '未完成'];
+                return ['', '', '', '', 'IG 主帳', '曝光', '未完成'];
             }
 
-            if (row.length >= 6) {
-                const isNewFormatPlatform = ['IG 主帳', 'IG 日常帳', 'TikTok', '官網'].includes(row[3]);
-                if (isNewFormatPlatform) {
-                    return [normalizeScheduleDateValue(row[0]), row[1], row[2], normalizeSchedulePlatform(row[3]), row[4], normalizeScheduleStatus(row[5])];
-                }
-                return [normalizeScheduleDateValue(row[0]), row[1], row[2], 'IG 主帳', row[3], normalizeScheduleStatus(row[5])];
+            if (row.length >= 7) {
+                return [
+                    normalizeScheduleDateValue(row[0]),
+                    normalizeScheduleDateValue(row[1]),
+                    String(row[2] || ''),
+                    String(row[3] || ''),
+                    normalizeSchedulePlatform(row[4]),
+                    String(row[5] || ''),
+                    normalizeScheduleStatus(row[6])
+                ];
+            }
+
+            if (row.length === 6) {
+                return [
+                    normalizeScheduleDateValue(row[0]),
+                    '',
+                    String(row[1] || ''),
+                    String(row[2] || ''),
+                    normalizeSchedulePlatform(row[3]),
+                    String(row[4] || ''),
+                    normalizeScheduleStatus(row[5])
+                ];
             }
 
             if (row.length === 5) {
-                return [normalizeScheduleDateValue(row[0]), row[1], row[2], 'IG 主帳', row[3], normalizeScheduleStatus(row[4])];
+                return [
+                    normalizeScheduleDateValue(row[0]),
+                    '',
+                    String(row[1] || ''),
+                    String(row[2] || ''),
+                    'IG 主帳',
+                    String(row[3] || ''),
+                    normalizeScheduleStatus(row[4])
+                ];
             }
 
-            return ['', '', '', 'IG 主帳', '曝光', '未完成'];
+            return ['', '', '', '', 'IG 主帳', '曝光', '未完成'];
         }
 
         function safeGetStorageItem(key) {
@@ -1510,6 +1535,10 @@
             ].join('-');
         }
 
+        function formatIcsDateValue(date) {
+            return formatScheduleDateValue(date).replace(/-/g, '');
+        }
+
         function normalizeScheduleDateValue(value) {
             const raw = String(value || '').trim();
             if (!raw) {
@@ -1528,6 +1557,35 @@
 
             const parsed = parseScheduleDate(normalized);
             return parsed ? parsed.getTime() : Number.POSITIVE_INFINITY;
+        }
+
+        function normalizeScheduleRowFields(fields) {
+            const startDate = normalizeScheduleDateValue(fields[0]?.value || '');
+            let endDate = normalizeScheduleDateValue(fields[1]?.value || '');
+            const topic = fields[2]?.value || '';
+            const type = fields[3]?.value || '';
+            const platform = fields[4]?.value || '';
+            const purpose = fields[5]?.value || '';
+            const status = fields[6]?.value || '';
+
+            let normalizedStartDate = startDate;
+
+            if (!normalizedStartDate && endDate) {
+                normalizedStartDate = endDate;
+                endDate = '';
+            }
+
+            if (normalizedStartDate && endDate) {
+                const startTime = getScheduleDateSortTime(normalizedStartDate);
+                const endTime = getScheduleDateSortTime(endDate);
+                if (endTime < startTime) {
+                    const swapDate = normalizedStartDate;
+                    normalizedStartDate = endDate;
+                    endDate = swapDate;
+                }
+            }
+
+            return [normalizedStartDate, endDate, topic, type, platform, purpose, status];
         }
 
         function normalizeTodoRow(row) {
@@ -1673,28 +1731,33 @@
             return lines.join('\r\n');
         }
 
-        function buildScheduleIcs(platform, topic, type, purpose, status, dateText) {
-            const parsedDate = parseScheduleDate(dateText);
-            if (!parsedDate) {
+        function buildScheduleIcs(platform, topic, type, purpose, status, startDateText, endDateText) {
+            const normalizedStartDate = normalizeScheduleDateValue(startDateText || endDateText);
+            const normalizedEndDate = normalizeScheduleDateValue(endDateText);
+            if (!normalizedStartDate) {
                 return null;
             }
 
-            const startLocal = new Date(
-                parsedDate.getFullYear(),
-                parsedDate.getMonth(),
-                parsedDate.getDate(),
-                20,
-                0,
-                0
-            );
-            const endLocal = new Date(
-                parsedDate.getFullYear(),
-                parsedDate.getMonth(),
-                parsedDate.getDate(),
-                20,
-                30,
-                0
-            );
+            const parsedStartDate = parseScheduleDate(normalizedStartDate);
+            if (!parsedStartDate) {
+                return null;
+            }
+
+            const hasRangeEndDate = Boolean(normalizedEndDate);
+            const parsedEndDate = hasRangeEndDate ? parseScheduleDate(normalizedEndDate) : null;
+
+            if (hasRangeEndDate && !parsedEndDate) {
+                return null;
+            }
+
+            let effectiveStartDate = parsedStartDate;
+            let effectiveEndDate = parsedEndDate;
+
+            if (effectiveEndDate && effectiveEndDate < effectiveStartDate) {
+                const swapDate = effectiveStartDate;
+                effectiveStartDate = effectiveEndDate;
+                effectiveEndDate = swapDate;
+            }
 
             const lines = [
                 buildCalendarHeader(),
@@ -1702,12 +1765,45 @@
                 `UID:${makeIcsUid('post')}`,
                 `DTSTAMP:${toIcsUtcDateTime(new Date())}`,
                 `SUMMARY:${escapeIcsText(`【${platform || ''}】${topic || '未命名發佈'}`)}`,
-                `DESCRIPTION:${escapeIcsText(`平台：${platform || ''}\n類型：${type || ''}\n內容目的：${purpose || ''}\n狀態：${status || ''}`)}`,
-                `DTSTART:${toIcsUtcDateTime(startLocal)}`,
-                `DTEND:${toIcsUtcDateTime(endLocal)}`,
-                'END:VEVENT',
-                buildCalendarFooter()
+                `DESCRIPTION:${escapeIcsText(`平台：${platform || ''}\n類型：${type || ''}\n內容目的：${purpose || ''}\n狀態：${status || ''}`)}`
             ];
+
+            if (effectiveEndDate) {
+                const endExclusive = new Date(
+                    effectiveEndDate.getFullYear(),
+                    effectiveEndDate.getMonth(),
+                    effectiveEndDate.getDate() + 1
+                );
+
+                lines.push(
+                    `DTSTART;VALUE=DATE:${formatIcsDateValue(effectiveStartDate)}`,
+                    `DTEND;VALUE=DATE:${formatIcsDateValue(endExclusive)}`
+                );
+            } else {
+                const startLocal = new Date(
+                    effectiveStartDate.getFullYear(),
+                    effectiveStartDate.getMonth(),
+                    effectiveStartDate.getDate(),
+                    20,
+                    0,
+                    0
+                );
+                const endLocal = new Date(
+                    effectiveStartDate.getFullYear(),
+                    effectiveStartDate.getMonth(),
+                    effectiveStartDate.getDate(),
+                    20,
+                    30,
+                    0
+                );
+
+                lines.push(
+                    `DTSTART:${toIcsUtcDateTime(startLocal)}`,
+                    `DTEND:${toIcsUtcDateTime(endLocal)}`
+                );
+            }
+
+            lines.push('END:VEVENT', buildCalendarFooter());
             return lines.join('\r\n');
         }
 
@@ -2322,52 +2418,49 @@
             const rows = [];
             document.querySelectorAll('#tableBody tr').forEach(tr => {
                 const fields = tr.querySelectorAll('input, select');
-                rows.push([
-                    normalizeScheduleDateValue(fields[0].value),
-                    fields[1].value,
-                    fields[2].value,
-                    fields[3].value,
-                    fields[4].value,
-                    fields[5].value
-                ]);
+                const rowData = normalizeScheduleRowFields(fields);
+                rows.push(rowData);
+                fields[0].value = rowData[0];
+                fields[1].value = rowData[1];
             });
             safeSetStorageItem(getWeekTableStorageKey(currentWeek), JSON.stringify(rows));
             updateMonthSummary();
             scheduleWorkspaceCloudSync();
         }
 
-        function addNewRow(data = ['', '', '', 'IG 主帳', '曝光', '未完成']) {
+        function addNewRow(data = ['', '', '', '', 'IG 主帳', '曝光', '未完成']) {
             const tableBody = document.getElementById('tableBody');
             const newRow = document.createElement('tr');
             newRow.innerHTML = `
-                <td><span class="mobile-field">日期</span><input class="table-input" type="date" value="${normalizeScheduleDateValue(data[0])}"></td>
-                <td><span class="mobile-field">主題</span><input class="table-input" type="text" placeholder="主題" value="${data[1]}"></td>
-                <td><span class="mobile-field">類型</span><input class="table-input" type="text" placeholder="例：Reel / 貼文 / 限動" value="${data[2]}"></td>
+                <td><span class="mobile-field">開始日期</span><input class="table-input" type="date" value="${normalizeScheduleDateValue(data[0])}"></td>
+                <td><span class="mobile-field">結束日期</span><input class="table-input" type="date" value="${normalizeScheduleDateValue(data[1])}"></td>
+                <td><span class="mobile-field">主題</span><input class="table-input" type="text" placeholder="主題" value="${data[2]}"></td>
+                <td><span class="mobile-field">類型</span><input class="table-input" type="text" placeholder="例：Reel / 貼文 / 限動" value="${data[3]}"></td>
                 <td>
                     <span class="mobile-field">發佈平台</span>
                     <select class="table-select">
-                        <option ${data[3] === 'IG 主帳' ? 'selected' : ''}>IG 主帳</option>
-                        <option ${data[3] === 'IG 日常帳' ? 'selected' : ''}>IG 日常帳</option>
-                        <option ${data[3] === 'TikTok' ? 'selected' : ''}>TikTok</option>
-                        <option ${data[3] === '官網' ? 'selected' : ''}>官網</option>
+                        <option ${data[4] === 'IG 主帳' ? 'selected' : ''}>IG 主帳</option>
+                        <option ${data[4] === 'IG 日常帳' ? 'selected' : ''}>IG 日常帳</option>
+                        <option ${data[4] === 'TikTok' ? 'selected' : ''}>TikTok</option>
+                        <option ${data[4] === '官網' ? 'selected' : ''}>官網</option>
                     </select>
                 </td>
                 <td>
                     <span class="mobile-field">內容目的</span>
                     <select class="table-select">
-                        <option ${data[4] === '曝光' ? 'selected' : ''}>曝光</option>
-                        <option ${data[4] === '導購' ? 'selected' : ''}>導購</option>
-                        <option ${data[4] === '委託招募' ? 'selected' : ''}>委託招募</option>
-                        <option ${data[4] === '品牌故事' ? 'selected' : ''}>品牌故事</option>
-                        <option ${data[4] === '商品介紹' ? 'selected' : ''}>商品介紹</option>
+                        <option ${data[5] === '曝光' ? 'selected' : ''}>曝光</option>
+                        <option ${data[5] === '導購' ? 'selected' : ''}>導購</option>
+                        <option ${data[5] === '委託招募' ? 'selected' : ''}>委託招募</option>
+                        <option ${data[5] === '品牌故事' ? 'selected' : ''}>品牌故事</option>
+                        <option ${data[5] === '商品介紹' ? 'selected' : ''}>商品介紹</option>
                     </select>
                 </td>
                 <td>
                     <span class="mobile-field">狀態</span>
                     <select class="table-select">
-                        <option ${data[5] === '未完成' ? 'selected' : ''}>未完成</option>
-                        <option ${data[5] === '進行中' ? 'selected' : ''}>進行中</option>
-                        <option ${data[5] === '已完成' ? 'selected' : ''}>已完成</option>
+                        <option ${data[6] === '未完成' ? 'selected' : ''}>未完成</option>
+                        <option ${data[6] === '進行中' ? 'selected' : ''}>進行中</option>
+                        <option ${data[6] === '已完成' ? 'selected' : ''}>已完成</option>
                     </select>
                 </td>
                 <td>
@@ -2391,8 +2484,8 @@
             const rows = Array.from(tableBody.querySelectorAll('tr')).map((tr, index) => ({ tr, index }));
 
             rows.sort((a, b) => {
-                const aDate = a.tr.querySelector('input[type="date"]')?.value || '';
-                const bDate = b.tr.querySelector('input[type="date"]')?.value || '';
+                const aDate = a.tr.querySelectorAll('input[type="date"]')[0]?.value || '';
+                const bDate = b.tr.querySelectorAll('input[type="date"]')[0]?.value || '';
                 const aTime = getScheduleDateSortTime(aDate);
                 const bTime = getScheduleDateSortTime(bDate);
 
@@ -2429,20 +2522,21 @@
             }
 
             const fields = row.querySelectorAll('input, select');
-            const dateText = fields[0]?.value || '';
-            const topic = fields[1]?.value || '';
-            const type = fields[2]?.value || '';
-            const platform = fields[3]?.value || '';
-            const purpose = fields[4]?.value || '';
-            const status = fields[5]?.value || '';
-            const icsText = buildScheduleIcs(platform, topic, type, purpose, status, dateText);
+            const startDateText = fields[0]?.value || '';
+            const endDateText = fields[1]?.value || '';
+            const topic = fields[2]?.value || '';
+            const type = fields[3]?.value || '';
+            const platform = fields[4]?.value || '';
+            const purpose = fields[5]?.value || '';
+            const status = fields[6]?.value || '';
+            const icsText = buildScheduleIcs(platform, topic, type, purpose, status, startDateText, endDateText);
 
             if (!icsText) {
                 alert('請先填入有效的排程日期');
                 return;
             }
 
-            const fileName = `${sanitizeFileName(`${platform}_${topic || '發佈'}_${dateText || 'date'}`)}.ics`;
+            const fileName = `${sanitizeFileName(`${platform}_${topic || '發佈'}_${startDateText || 'date'}${endDateText ? `_to_${endDateText}` : ''}`)}.ics`;
             downloadIcsFile(fileName, icsText);
         }
 
@@ -2625,7 +2719,7 @@
                 totals.digitalIncome += parseNumber(data.weeklyDigitalIncome);
                 totals.membershipIncome += parseNumber(data.weeklyMembershipIncome);
                 totals.works += parseNumber(data.weeklyWorks);
-                totals.publishedContent += rows.filter(row => row[5] === '已完成').length;
+                totals.publishedContent += rows.filter(row => row[6] === '已完成').length;
             }
 
             totals.totalMonetization =
