@@ -372,6 +372,13 @@
             gap: 10px;
         }
 
+        .todo-date-row {
+            display: grid;
+            gap: 8px;
+            max-width: 240px;
+            margin-bottom: 14px;
+        }
+
         .todo-row {
             display: grid;
             grid-template-columns: auto 1fr auto;
@@ -770,6 +777,10 @@
                 width: 100%;
             }
 
+            .todo-date-row {
+                max-width: none;
+            }
+
             .score-stack {
                 gap: 10px;
             }
@@ -978,10 +989,14 @@
             </div>
 
             <div class="todo-board">
+                <div class="todo-date-row">
+                    <label class="metric-label" for="todoDatePicker">日期</label>
+                    <input class="metric-input" id="todoDatePicker" type="date">
+                </div>
                 <div class="card">
                     <div class="card-title">
-                        <span>本週待辦事項</span>
-                        <span class="card-subtitle">想到就記，做完就勾，不用先整理成系統</span>
+                        <span>每日待辦事項</span>
+                        <span class="card-subtitle">只放今天要處理的事，做完就勾掉，不要把整週雜事都丟進來。</span>
                     </div>
                     <div class="todo-list" id="todoList"></div>
                     <button class="btn" style="margin-top:16px;" id="addTodoButton" data-action="add-todo" type="button">新增待辦</button>
@@ -1245,7 +1260,7 @@
 
         <div class="note-section">
             <strong>使用方式</strong><br>
-            先看本週最重要三件事，再把一般待辦補上，這樣每天打開就知道先做什麼。<br>
+            先看本週最重要三件事，再把今天的待辦補上，這樣每天打開就知道先做什麼。<br>
             發佈排程、主力作品進度與本週變現進度，負責幫你維持節奏，不需要填太多難以判斷的欄位。<br>
             靈感池和月總覽保留在後面，需要時再看，不讓它們搶走你每天執行的注意力。
         </div>
@@ -1254,6 +1269,7 @@
     <script>
         let currentWeek = 1;
         let currentView = 'week';
+        let currentTodoDate = getTodayDateKey();
 
         const lifecycleStages = ['靈感', '草稿', '完稿', '發佈', '商品化', '二次內容', '產生收入'];
 
@@ -1267,6 +1283,23 @@
 
         function getWeekTodoStorageKey(week) {
             return `dumpling_brand_week_todos_${week}`;
+        }
+
+        function getDailyTodoStorageKey() {
+            return 'dumpling_brand_daily_todos';
+        }
+
+        function getTodayDateKey(reference = new Date()) {
+            return [
+                reference.getFullYear(),
+                pad2(reference.getMonth() + 1),
+                pad2(reference.getDate())
+            ].join('-');
+        }
+
+        function normalizeTodoDateKey(value) {
+            const raw = String(value || '').trim();
+            return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : getTodayDateKey();
         }
 
         function normalizeScheduleStatus(status) {
@@ -1414,6 +1447,88 @@
             return [Boolean(row[0]), String(row[1] || '')];
         }
 
+        function hasMeaningfulTodoRow(row) {
+            if (!Array.isArray(row)) {
+                return false;
+            }
+
+            return Boolean(row[0]) || String(row[1] || '').trim().length > 0;
+        }
+
+        function hasMeaningfulTodoRows(rows) {
+            return Array.isArray(rows) && rows.some(hasMeaningfulTodoRow);
+        }
+
+        function normalizeDailyTodoMap(source) {
+            const normalizedMap = {};
+
+            if (!source || typeof source !== 'object' || Array.isArray(source)) {
+                return normalizedMap;
+            }
+
+            Object.keys(source).forEach(dateKey => {
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+                    return;
+                }
+
+                const rows = source[dateKey];
+                normalizedMap[dateKey] = Array.isArray(rows)
+                    ? rows.map(normalizeTodoRow)
+                    : [];
+            });
+
+            return normalizedMap;
+        }
+
+        function hasMeaningfulDailyTodoMap(map) {
+            return map && typeof map === 'object' && !Array.isArray(map)
+                ? Object.values(map).some(hasMeaningfulTodoRows)
+                : false;
+        }
+
+        function getStoredLegacyWeekTodoMap() {
+            const weekTodos = {};
+
+            for (let week = 1; week <= 4; week += 1) {
+                weekTodos[week] = getStoredWeekTodoRows(week);
+            }
+
+            return weekTodos;
+        }
+
+        function flattenLegacyWeekTodoRows(weekTodos) {
+            return [1, 2, 3, 4].flatMap(week => Array.isArray(weekTodos?.[week]) ? weekTodos[week] : []);
+        }
+
+        function migrateLegacyWeekTodosIntoDailyTodos(dailyTodos, weekTodos, targetDate = getTodayDateKey()) {
+            const normalizedDailyTodos = normalizeDailyTodoMap(dailyTodos);
+            if (hasMeaningfulDailyTodoMap(normalizedDailyTodos)) {
+                return {
+                    dailyTodos: normalizedDailyTodos,
+                    migrated: false
+                };
+            }
+
+            const legacyRows = flattenLegacyWeekTodoRows(weekTodos)
+                .map(normalizeTodoRow)
+                .filter(hasMeaningfulTodoRow);
+
+            if (!legacyRows.length) {
+                return {
+                    dailyTodos: normalizedDailyTodoMap(normalizedDailyTodos),
+                    migrated: false
+                };
+            }
+
+            return {
+                dailyTodos: {
+                    ...normalizedDailyTodos,
+                    [targetDate]: legacyRows
+                },
+                migrated: true
+            };
+        }
+
         function normalizeInspirationRow(row) {
             if (!Array.isArray(row)) {
                 return ['', '', '作品', '3', '3', '3', '未開始'];
@@ -1549,7 +1664,7 @@
 
         const FIREBASE_COLLECTION_NAME = 'creator_workbench_sync';
         const FIREBASE_DOCUMENT_ID = 'main';
-        const FIREBASE_STATE_VERSION = 1;
+        const FIREBASE_STATE_VERSION = 2;
         const FIREBASE_PENDING_CLEAR_FLAG = 'dumpling_brand_firebase_pending_clear';
 
         let firebaseAppInstance = null;
@@ -1571,6 +1686,7 @@
             const weekData = {};
             const weekTables = {};
             const weekTodos = {};
+            const dailyTodos = {};
 
             for (let week = 1; week <= 4; week += 1) {
                 weekData[week] = {};
@@ -1582,6 +1698,7 @@
                 weekData,
                 weekTables,
                 weekTodos,
+                dailyTodos,
                 monthData: {},
                 inspiration: []
             };
@@ -1595,6 +1712,7 @@
                 ? safeParseJson(rawState.stateJson, {})
                 : rawState;
             const normalizedSource = sourceState && typeof sourceState === 'object' ? sourceState : {};
+            let migratedLegacyTodos = false;
 
             for (let week = 1; week <= 4; week += 1) {
                 const savedWeekData = normalizedSource.weekData && normalizedSource.weekData[week];
@@ -1607,6 +1725,10 @@
                     : [];
             }
 
+            state.dailyTodos = normalizeDailyTodoMap(normalizedSource.dailyTodos);
+            const migratedDailyTodoState = migrateLegacyWeekTodosIntoDailyTodos(state.dailyTodos, state.weekTodos);
+            state.dailyTodos = migratedDailyTodoState.dailyTodos;
+            migratedLegacyTodos = migratedDailyTodoState.migrated;
             state.monthData = normalizedSource.monthData && typeof normalizedSource.monthData === 'object' && !Array.isArray(normalizedSource.monthData)
                 ? normalizedSource.monthData
                 : {};
@@ -1614,7 +1736,7 @@
                 ? normalizedSource.inspiration.map(normalizeInspirationRow)
                 : [];
 
-            return { state, mode };
+            return { state, mode, migratedLegacyTodos };
         }
 
         function serializeWorkspaceState(state) {
@@ -1647,6 +1769,23 @@
             return Array.isArray(savedData) ? savedData.map(normalizeTodoRow) : [];
         }
 
+        function getStoredDailyTodoMap() {
+            const savedData = safeParseJson(safeGetStorageItem(getDailyTodoStorageKey()), {});
+            return normalizeDailyTodoMap(savedData);
+        }
+
+        function getStoredDailyTodoMapWithLegacyMigration() {
+            const savedDailyTodos = getStoredDailyTodoMap();
+            const legacyWeekTodos = getStoredLegacyWeekTodoMap();
+            const migration = migrateLegacyWeekTodosIntoDailyTodos(savedDailyTodos, legacyWeekTodos);
+
+            if (migration.migrated) {
+                safeSetStorageItem(getDailyTodoStorageKey(), JSON.stringify(migration.dailyTodos));
+            }
+
+            return migration;
+        }
+
         function getStoredInspirationRows() {
             const savedData = safeParseJson(safeGetStorageItem(getInspirationStorageKey()), []);
             return Array.isArray(savedData) ? savedData.map(normalizeInspirationRow) : [];
@@ -1662,6 +1801,7 @@
                 state.weekTodos[week] = getStoredWeekTodoRows(week);
             }
 
+            state.dailyTodos = getStoredDailyTodoMapWithLegacyMigration().dailyTodos;
             const savedMonthData = safeParseJson(safeGetStorageItem(getMonthStorageKey()), {});
             state.monthData = savedMonthData && typeof savedMonthData === 'object' && !Array.isArray(savedMonthData) ? savedMonthData : {};
             state.inspiration = getStoredInspirationRows();
@@ -1700,6 +1840,8 @@
                     hasMeaningfulTodo(weekTodos)
                 );
             }) || Boolean(
+                hasMeaningfulDailyTodoMap(state.dailyTodos)
+            ) || Boolean(
                 state.monthData && Object.keys(state.monthData).length
             ) || Boolean(
                 Array.isArray(state.inspiration) && state.inspiration.length
@@ -1724,6 +1866,7 @@
                 safeSetStorageItem(getWeekTodoStorageKey(week), JSON.stringify(state.weekTodos[week] || []));
             }
 
+            safeSetStorageItem(getDailyTodoStorageKey(), JSON.stringify(state.dailyTodos || {}));
             safeSetStorageItem(getMonthStorageKey(), JSON.stringify(state.monthData || {}));
             safeSetStorageItem(getInspirationStorageKey(), JSON.stringify(state.inspiration || []));
         }
@@ -1842,7 +1985,7 @@
                     return;
                 }
 
-                const { state: cloudState, mode } = normalizeCloudWorkspaceState(snapshot.data());
+                const { state: cloudState, mode, migratedLegacyTodos } = normalizeCloudWorkspaceState(snapshot.data());
                 const cloudStateKey = serializeWorkspaceState(cloudState);
                 const cloudHasContent = workspaceHasContent(cloudState);
 
@@ -1886,7 +2029,20 @@
                     return;
                 }
 
+                const previousAppliedStateKey = firebaseLastAppliedStateKey;
                 applyWorkspaceStateToUi(cloudState);
+
+                if (migratedLegacyTodos && cloudStateKey !== previousAppliedStateKey) {
+                    firebasePendingWriteKey = cloudStateKey;
+                    try {
+                        await firebaseDocRef.set(buildFirestoreWorkspacePayload(cloudState, 'data'));
+                        firebaseLastAppliedStateKey = cloudStateKey;
+                    } catch (error) {
+                        console.error('Firestore migration sync failed', error);
+                    } finally {
+                        firebasePendingWriteKey = '';
+                    }
+                }
 
                 if (firebasePendingSync) {
                     await flushWorkspaceCloudSync();
@@ -2064,7 +2220,7 @@
                 });
             }
 
-            loadWeekTodoData(week);
+            loadDailyTodoData(currentTodoDate);
             updateWeeklyIncomeTotal();
             updateLifecycleUI();
             updateMonthSummary();
@@ -2178,7 +2334,7 @@
             downloadIcsFile(fileName, icsText);
         }
 
-        function saveWeekTodoData() {
+        function saveDailyTodoData() {
             const rows = [];
             document.querySelectorAll('#todoList .todo-row').forEach(row => {
                 rows.push([
@@ -2186,22 +2342,47 @@
                     row.querySelector('.todo-input').value
                 ]);
             });
-            safeSetStorageItem(getWeekTodoStorageKey(currentWeek), JSON.stringify(rows));
+
+            const normalizedDate = normalizeTodoDateKey(currentTodoDate);
+            currentTodoDate = normalizedDate;
+
+            const dailyTodoState = getStoredDailyTodoMapWithLegacyMigration();
+            const dailyTodos = dailyTodoState.dailyTodos;
+            dailyTodos[normalizedDate] = rows.map(normalizeTodoRow);
+            safeSetStorageItem(getDailyTodoStorageKey(), JSON.stringify(dailyTodos));
             scheduleWorkspaceCloudSync();
         }
 
-        function loadWeekTodoData(week) {
+        function loadDailyTodoData(dateKey = currentTodoDate) {
+            const normalizedDate = normalizeTodoDateKey(dateKey);
+            currentTodoDate = normalizedDate;
+
+            const todoDatePicker = document.getElementById('todoDatePicker');
+            if (todoDatePicker && todoDatePicker.value !== normalizedDate) {
+                todoDatePicker.value = normalizedDate;
+            }
+
             const todoList = document.getElementById('todoList');
             todoList.innerHTML = '';
-            const savedData = safeParseJson(safeGetStorageItem(getWeekTodoStorageKey(week)), null);
-            if (Array.isArray(savedData) && savedData.length) {
-                savedData.forEach(rowData => addTodoRow(normalizeTodoRow(rowData)));
+
+            const dailyTodoState = getStoredDailyTodoMapWithLegacyMigration();
+            const dailyTodos = dailyTodoState.dailyTodos;
+            const savedData = Array.isArray(dailyTodos[normalizedDate]) ? dailyTodos[normalizedDate] : [];
+            if (savedData.length) {
+                savedData.forEach(rowData => addTodoRow(normalizeTodoRow(rowData), false));
+                if (dailyTodoState.migrated && !firebaseApplyingRemoteState) {
+                    scheduleWorkspaceCloudSync();
+                }
                 return;
             }
-            addTodoRow([false, '']);
+
+            addTodoRow([false, ''], false);
+            if (dailyTodoState.migrated && !firebaseApplyingRemoteState) {
+                scheduleWorkspaceCloudSync();
+            }
         }
 
-        function addTodoRow(data = [false, '']) {
+        function addTodoRow(data = [false, ''], shouldPersist = true) {
             const normalizedData = normalizeTodoRow(data);
             const todoList = document.getElementById('todoList');
             const row = document.createElement('div');
@@ -2213,12 +2394,14 @@
             `;
             todoList.appendChild(row);
             row.classList.toggle('done', Boolean(normalizedData[0]));
-            saveWeekTodoData();
+            if (shouldPersist) {
+                saveDailyTodoData();
+            }
         }
 
         function toggleTodoRow(checkbox) {
             checkbox.closest('.todo-row').classList.toggle('done', checkbox.checked);
-            saveWeekTodoData();
+            saveDailyTodoData();
         }
 
         function removeTodoRow(button) {
@@ -2227,7 +2410,11 @@
                 addTodoRow([false, '']);
                 return;
             }
-            saveWeekTodoData();
+            saveDailyTodoData();
+        }
+
+        function selectTodoDate(dateKey) {
+            loadDailyTodoData(dateKey);
         }
 
         function updateWeeklyIncomeTotal() {
@@ -2504,7 +2691,7 @@
             }
 
             if (target.closest('#todoList')) {
-                saveWeekTodoData();
+                saveDailyTodoData();
                 return;
             }
 
@@ -2532,7 +2719,12 @@
                 if (target.matches('.todo-check')) {
                     target.closest('.todo-row').classList.toggle('done', target.checked);
                 }
-                saveWeekTodoData();
+                saveDailyTodoData();
+                return;
+            }
+
+            if (target.id === 'todoDatePicker') {
+                selectTodoDate(target.value);
                 return;
             }
 
@@ -2616,6 +2808,7 @@
                         key.startsWith('dumpling_brand_week_') ||
                         key.startsWith('dumpling_brand_week_table_') ||
                         key.startsWith('dumpling_brand_week_todos_') ||
+                        key === 'dumpling_brand_daily_todos' ||
                         key === 'dumpling_brand_month_overview' ||
                         key === 'dumpling_brand_inspiration_pool'
                     ) {
